@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a0f12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Yatzy · con Tziu Gonario</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- MENÙ -->
+<section id="menu" class="screen active">
+  <div class="menu-dice" aria-hidden="true">
+    <span class="die deco d1"></span><span class="die deco d2"></span><span class="die deco d3"></span>
+  </div>
+  <div class="menu-wrap">
+    <div class="portrait big" data-mentor></div>
+    <p class="bubble menu-bubble" id="menuSay" hidden></p>
+    <h1 class="title">Yatzy</h1>
+    <p class="subtitle">con Tziu Gonario</p>
+    <nav class="menu-buttons">
+      <button class="btn primary" id="btnContinue" hidden>Continua la partita</button>
+      <button class="btn primary" id="btnClassic">Partita classica</button>
+      <button class="btn primary" id="btnAdventure">Avventura</button>
+      <button class="btn ghost" id="btnRules">Regole</button>
+    </nav>
+    <p class="best" id="bestScore"></p>
+    <div class="toggles">
+      <button class="sound-toggle" id="btnSound" aria-label="Suoni">♪ Suoni: sì</button>
+      <button class="sound-toggle" id="btnShake">📳 Agita per lanciare: no</button>
+    </div>
+  </div>
+</section>
+
+<!-- IMPOSTAZIONI PARTITA -->
+<section id="setup" class="screen">
+  <div class="panel">
+    <button class="link" data-go="menu">‹ Indietro</button>
+    <h2>Partita classica</h2>
+    <p class="label">Avversario</p>
+    <div class="seg" id="segMode">
+      <button data-v="cpu" class="on">Tziu Gonario</button>
+      <button data-v="duo">Due giocatori</button>
+      <button data-v="solo">Da solo</button>
+    </div>
+    <div id="levelBox">
+      <p class="label">Bravura di Tziu Gonario</p>
+      <div class="seg" id="segLevel">
+        <button data-v="easy">Apprendista</button>
+        <button data-v="normal" class="on">Esperto</button>
+        <button data-v="hard">Maestro</button>
+      </div>
+    </div>
+    <p class="label">Regole</p>
+    <div class="seg" id="segRules">
+      <button data-v="classic" class="on">Classiche</button>
+      <button data-v="rainbow">Arcobaleno</button>
+      <button data-v="battle">Battaglia</button>
+    </div>
+    <p class="muted small" id="rulesDesc"></p>
+    <p class="label">Nomi</p>
+    <input id="name1" class="input" maxlength="14" placeholder="Il tuo nome" autocomplete="off">
+    <input id="name2" class="input" maxlength="14" placeholder="Secondo giocatore" autocomplete="off" hidden>
+    <button class="btn primary wide" id="btnStart">Inizia</button>
+  </div>
+</section>
+
+<!-- REGOLE -->
+<section id="rules" class="screen">
+  <div class="panel">
+    <button class="link" data-go="menu">‹ Indietro</button>
+    <h2>Come si gioca</h2>
+    <p>Ogni turno hai <b>tre lanci</b>. Dopo il primo, tocca i dadi che vuoi tenere e rilancia gli altri. Poi scegli una casella del foglio: ogni casella si usa una sola volta, e dopo 13 turni vince chi ha più punti.</p>
+    <h3>Parte alta</h3>
+    <p>Uno, Due… Sei: la somma dei dadi di quel numero. Se la parte alta arriva a <b>63</b> ottieni un <b>bonus di 35</b>.</p>
+    <h3>Parte bassa</h3>
+    <ul class="rules-list">
+      <li><b>Tris</b>: tre uguali, vale la somma di tutti i dadi</li>
+      <li><b>Poker</b>: quattro uguali, la somma di tutti i dadi</li>
+      <li><b>Full</b>: tre uguali più due uguali, 25</li>
+      <li><b>Scala corta</b>: quattro numeri in fila, 30</li>
+      <li><b>Scala lunga</b>: cinque numeri in fila, 40</li>
+      <li><b>Cinquina</b>: cinque uguali, 50</li>
+      <li><b>Chance</b>: qualsiasi combinazione, la somma dei dadi</li>
+    </ul>
+    <h3>Variante Arcobaleno</h3>
+    <p>Ogni dado esce anche con un colore: <b>rubino</b>, <b>smeraldo</b> o <b>zaffiro</b>. Il colore resta se tieni il dado. Due caselle in più: <b>Monocolore</b> (cinque dello stesso colore, 40) e <b>Full di colori</b> (tre di un colore e due di un altro, 20). La partita dura 15 turni.</p>
+    <h3>Variante Battaglia</h3>
+    <p>Due giocatori, <b>150 punti vita</b> ciascuno. Le caselle della <b>parte alta curano</b> te (fino a 150), quelle della <b>parte bassa attaccano</b>: tolgono all'avversario tanti punti vita quanto il punteggio. Arrivare a 63 nella parte alta dà una cura di 35, e ogni cinquina extra toglie 50 punti all'avversario. Vince chi manda l'altro a zero; se finiscono le caselle, vince chi ha più punti vita.</p>
+    <h3>Cinquine extra</h3>
+    <p>Se hai già segnato 50 nella Cinquina, ogni nuova cinquina vale <b>100 punti bonus</b>. Se la casella Cinquina è già piena, una cinquina vale anche come jolly per Full e Scale.</p>
+    <p class="muted">Puoi segnare una casella anche quando i dadi non la soddisfano: vale zero. A volte conviene!</p>
+  </div>
+</section>
+
+<!-- PARTITA -->
+<section id="game" class="screen">
+  <div class="game-grid">
+    <div class="left">
+      <header class="topbar">
+        <button class="link" id="btnQuit">‹ Menù</button>
+        <div class="round"><span id="roundLabel"></span>Turno <b id="roundNo">1</b> di <span id="roundOf">13</span></div>
+        <button class="link" id="btnSound2" aria-label="Suoni">♪</button>
+      </header>
+      <div class="players" id="players"></div>
+      <div class="mentor">
+        <div class="portrait small" data-mentor></div>
+        <p class="bubble" id="say"></p>
+      </div>
+      <div class="table-area">
+        <div class="tray" id="tray"></div>
+        <button class="cup" id="cup" aria-label="Bossolo: lancia i dadi"></button>
+        <p class="roll-hint" id="rollHint">Tocca il tavolo per lanciare</p>
+        <div class="rolls" id="rolls"></div>
+        <div class="actions">
+          <button class="btn primary" id="btnRoll">Lancia</button>
+          <button class="btn" id="btnScore" disabled>Scegli una casella</button>
+        </div>
+        <button class="btn charm" id="btnCharm" hidden></button>
+      </div>
+      <div class="board" id="board"></div>
+      <button class="link sheet-toggle" id="btnSheet">Foglio completo di tutti i giocatori</button>
+    </div>
+    <div class="card">
+      <table id="sheet" class="sheet"></table>
+    </div>
+  </div>
+</section>
+
+<!-- SCELTA DELLA FACCIA (Sigillo di Rame) -->
+<div id="facePick" class="overlay face-pick" hidden></div>
+
+<!-- MAPPA AVVENTURA -->
+<section id="map" class="screen">
+  <div class="map-wrap">
+    <header class="topbar">
+      <button class="link" data-go="menu">‹ Menù</button>
+      <div class="round" id="mapStars"></div>
+    </header>
+    <h2 class="map-title">Il viaggio di Tziu Gonario</h2>
+    <p class="muted map-sub">Otto tappe, otto sfidanti. Vinci per aprire la strada e guadagnare talismani.</p>
+    <div class="map-list" id="mapList"></div>
+    <p class="label">Talismani</p>
+    <div class="charm-row" id="mapCharms"></div>
+  </div>
+</section>
+
+<!-- BRIEFING TAPPA -->
+<section id="brief" class="screen">
+  <div class="panel brief">
+    <button class="link" data-go="map">‹ Mappa</button>
+    <p class="label" id="briefStep"></p>
+    <h2 id="briefPlace"></h2>
+    <p class="muted" id="briefDesc"></p>
+    <div class="foe">
+      <div class="medal big" id="briefIcon"></div>
+      <div><b id="briefFoe"></b><p class="quote" id="briefQuote"></p></div>
+    </div>
+    <p class="label">Obiettivo</p>
+    <p class="goal" id="briefGoal"></p>
+    <div class="star-goals" id="briefStars"></div>
+    <div id="charmBox">
+      <p class="label">Talismano da portare</p>
+      <div class="seg wrap" id="segCharm"></div>
+      <p class="muted small" id="charmDesc"></p>
+    </div>
+    <button class="btn primary wide" id="btnPlayStage">Gioca</button>
+  </div>
+</section>
+
+<!-- FINE PARTITA -->
+<div id="endOverlay" class="overlay" hidden>
+  <div class="panel end">
+    <div class="portrait big" data-mentor></div>
+    <h2 id="endTitle"></h2>
+    <div id="endScores" class="end-scores"></div>
+    <p id="endNote" class="muted"></p>
+    <button class="btn primary wide" id="btnNext" hidden>Tappa successiva</button>
+    <button class="btn primary wide" id="btnAgain">Rivincita</button>
+    <button class="btn wide" id="btnEndMenu">Menù</button>
+  </div>
+</div>
+
+<div id="cameo" class="cameo" hidden>
+  <div class="portrait cameo-portrait" data-mentor></div>
+  <img class="cameo-clip" alt="" draggable="false">
+  <p class="bubble cameo-say"></p>
+</div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<script src="game.js"></script>
+</body>
+</html>
