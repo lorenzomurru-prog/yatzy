@@ -506,6 +506,9 @@ const PLAYER_CHARS = [
   { id: 'boe',        name: 'Su Boe',         desc: 'La maschera con le corna e i campanacci.' },
   { id: 'jana',       name: 'Sa Jana',        desc: 'La piccola fata delle domus de janas.' },
   { id: 'piscadore',  name: 'Su Piscadore',   desc: 'Pescatore della laguna di Cabras.' },
+  { id: 'sirbone',    name: 'Su Sirbone',     desc: 'Il cinghiale sardo, testardo e furbo.' },
+  { id: 'mufrone',    name: 'Su Mufrone',     desc: 'Il muflone dalle grandi corna.' },
+  { id: 'cuaddeddu',  name: 'Su Cuaddeddu',   desc: 'Il cavallino selvatico della Giara.' },
 ];
 const charSrc = id => (PLAYER_CHARS.some(c => c.id === id) ? `img/giocatori/${id}.webp` : null);
 const myChar = () => localStorage.getItem('cd.char');
@@ -1034,6 +1037,8 @@ function cheerChip(j) {
   const ava = document.querySelector(`#players .chip[data-p="${j}"] .chip-ava`);
   if (!ava) return;
   ava.classList.remove('cheer'); void ava.offsetWidth; ava.classList.add('cheer');
+  const tp = $('.mentor [data-mentor]');
+  tp.classList.remove('cheer'); void tp.offsetWidth; tp.classList.add('cheer');
 }
 
 function battleFx(j, text, kind) {
@@ -1311,6 +1316,12 @@ function render() {
   $('#roundLabel').textContent = stageOf() ? stageOf().place : '';
 
   renderBoard(p, canAct);
+  const tp = $('.mentor [data-mentor]'), ta = tp.querySelector('.turn-ava');
+  tp.classList.toggle('player', !!p.ava);
+  if (p.ava && ta.getAttribute('src') !== p.ava) {
+    ta.setAttribute('src', p.ava);
+    tp.classList.remove('pop'); void tp.offsetWidth; tp.classList.add('pop');
+  }
   $('#emotes').hidden = !G.online || !!G.online.gone;
 
   // foglio punti
@@ -1748,6 +1759,9 @@ function initSeg(id, onChange) {
 
 function init() {
   document.querySelectorAll('[data-mentor]').forEach((el, k) => { el.innerHTML = MENTOR_HTML; });
+  // nel riquadro della partita: il personaggio di chi è di turno, con Tziu Gonario nel medaglione
+  $('.mentor [data-mentor]').insertAdjacentHTML('beforeend',
+    `<img class="turn-ava" alt="" draggable="false"><span class="tziu-badge" aria-hidden="true"><img src="${G_DIR}idle.webp" alt=""></span>`);
   buildTray();
   FX.init();
   document.querySelectorAll('.deco').forEach(d => { d.innerHTML = cubeHTML(); });
