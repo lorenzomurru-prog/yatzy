@@ -100,38 +100,46 @@ const CHARMS = {
 
 // goal: score = fai almeno `min` punti da solo · beat = batti l'avversario (con `margin` di scarto, e il bonus se `needBonus`)
 const STAGES = [
-  { id: 'bottega', place: "L'Ovile", icon: '🐑',
+  { id: 'bottega', place: "L'Ovile", icon: '🐑', portrait: 'img/gonario/idle.webp',
     desc: 'Tra pecore e muretti a secco comincia il viaggio. Tziu Gonario vuole vedere come lanci.',
     goal: { type: 'score', min: 120 }, goalText: 'Fai almeno 120 punti', stars: [170, 220], unlock: 'ritorno',
     intro: 'Ajò! Prima di partire fammi vedere come lanci. Arriva a 120 punti!' },
-  { id: 'orto', place: "L'Orto delle Erbe", icon: '🌿',
-    desc: 'Tra salvia e rosmarino ti aspetta la più gentile delle avversarie.',
-    foe: { name: 'Nonna Salvia', icon: '👵', level: 'easy', quote: 'Le erbe crescono piano, ma i miei dadi corrono!' },
-    goal: { type: 'beat' }, goalText: 'Batti Nonna Salvia', stars: [190, 240] },
-  { id: 'miniera', place: 'La Miniera di Cristallo', icon: '💎',
-    desc: 'Nel buio brillano i cristalli. Bruno conta solo i numeri alti.',
-    foe: { name: 'Bruno il Minatore', icon: '⛏️', level: 'easy', quote: 'Scavo da quarant\'anni: so riconoscere un sei!' },
-    goal: { type: 'beat', needBonus: true }, goalText: 'Batti Bruno e ottieni il bonus della parte alta', stars: [200, 250], unlock: 'lente' },
-  { id: 'biblioteca', place: 'La Biblioteca Sommersa', icon: '📜',
-    desc: 'Libri antichi tra le onde. Ofelia ha letto ogni trattato sui dadi.',
-    foe: { name: 'Ofelia la Bibliotecaria', icon: '📚', level: 'normal', quote: 'Ho studiato la probabilità. Tu?' },
-    goal: { type: 'beat' }, goalText: 'Batti Ofelia', stars: [200, 250] },
-  { id: 'mercato', place: 'Il Mercato delle Spezie', icon: '🏺',
-    desc: 'Profumi, tappeti e affari. Zafar non accetta una vittoria risicata.',
-    foe: { name: 'Zafar il Mercante', icon: '🧳', level: 'normal', quote: 'Vincere di poco? Non è un affare.' },
-    goal: { type: 'beat', margin: 20 }, goalText: 'Batti Zafar con almeno 20 punti di scarto', stars: [215, 260], unlock: 'sigillo' },
-  { id: 'torre', place: "La Torre dell'Orologio", icon: '🕰️',
-    desc: 'Qui il tempo è prezioso: tutti hanno solo due lanci per turno.',
-    foe: { name: 'Ticchio l\'Orologiaio', icon: '⏱️', level: 'normal', quote: 'Tic, tac. Due lanci e basta!' },
-    rolls: 2, goal: { type: 'beat' }, goalText: 'Batti Ticchio con soli 2 lanci per turno', stars: [170, 210] },
-  { id: 'osservatorio', place: "L'Osservatorio", icon: '🔭',
-    desc: 'Sotto le stelle, Vega calcola ogni lancio come un\'orbita.',
-    foe: { name: 'Vega l\'Astronoma', icon: '🌙', level: 'hard', quote: 'Le stelle mi hanno detto come finirà.' },
-    goal: { type: 'beat' }, goalText: 'Batti Vega', stars: [220, 270], unlock: 'elisir' },
-  { id: 'fornace', place: 'La Fornace del Drago', icon: '🔥',
-    desc: 'Nel cuore della montagna, il Drago di Rame custodisce l\'ultimo segreto.',
-    foe: { name: 'Il Drago di Rame', icon: '🐉', level: 'hard', head: 25, quote: 'Parto con 25 punti di vantaggio. Coraggio, piccolo pastore.' },
-    goal: { type: 'beat' }, goalText: 'Batti il Drago, che parte con 25 punti', stars: [230, 280] },
+  { id: 'gavinedda', place: 'Su Furru', icon: '🍞',
+    desc: 'Profumo di pane appena sfornato. Tzia Gavinedda gioca piano piano, punta sempre al bonus e non sbaglia mai un conto.',
+    foe: { name: 'Tzia Gavinedda', img: 'gavinedda', icon: '👵', level: 'easy', style: 'prudente',
+      quote: 'Fizu meu, chi va piano va sano e va lontano.',
+      lines: ['Piano piano, il pane lievita.', 'Un punto alla volta, come le briciole per le galline.'] },
+    goal: { type: 'beat' }, goalText: 'Batti Tzia Gavinedda', stars: [190, 240] },
+  { id: 'casaro', place: 'Su Casu', icon: '🧀',
+    desc: 'Nel caseificio stagionano le forme di pecorino. Il Casaro tiene solo i numeri più grossi e ama Tris, Poker e Chance pesanti.',
+    foe: { name: 'Il Casaro', img: 'casaro', icon: '🧀', level: 'normal', style: 'accumulatore',
+      quote: 'Il formaggio buono è quello che pesa. Anche i punti!',
+      lines: ['Questa è una forma da tre chili!', 'Stagionato al punto giusto.'] },
+    goal: { type: 'beat' }, goalText: 'Batti il Casaro', stars: [200, 250], unlock: 'lente' },
+  { id: 'tzilleri', place: 'Su Tzilleri', icon: '🍷',
+    desc: 'Nel bar del paese si gioca in fretta: tutti hanno solo due lanci per turno. Il barista lancia e via, senza pensarci troppo.',
+    foe: { name: 'Il barista', img: 'barista', icon: '🍷', level: 'normal', style: 'impulsivo',
+      quote: 'Un lancio, un bicchiere, e via! Qui non si perde tempo.',
+      lines: ['Alla salute!', 'Offre la casa!'] },
+    rolls: 2, goal: { type: 'beat' }, goalText: 'Batti il barista con soli 2 lanci per turno', stars: [170, 210] },
+  { id: 'sartiglia', place: 'Sa Sartiglia', icon: '⭐',
+    desc: 'Alla giostra si corre verso la stella. Su Componidori rischia tutto per scale e Yatzy. Si gioca con i dadi Arcobaleno.',
+    foe: { name: 'Su Componidori', img: 'componidori', icon: '⭐', level: 'normal', style: 'stelle',
+      quote: 'Io miro solo alla stella.',
+      lines: ['Centro! La stella è mia.', 'Al galoppo verso la stella!'] },
+    rules: 'rainbow', goal: { type: 'beat', margin: 15 }, goalText: 'Batti Su Componidori con 15 punti di scarto (dadi Arcobaleno)', stars: [230, 280], unlock: 'sigillo' },
+  { id: 'merdules', place: 'Su Carrasecare', icon: '🎭',
+    desc: 'È carnevale e il Merdules non scherza: attacca sempre. In questa tappa si gioca a Battaglia.',
+    foe: { name: 'Il Merdules', img: 'merdules', icon: '🎭', level: 'normal', style: 'aggressivo',
+      quote: 'A carnevale si gioca duro. Preparati!',
+      lines: ['Ti ho preso!', 'Ecco un bel colpo di bastone!'] },
+    rules: 'battle', goal: { type: 'beat' }, goalText: 'Batti il Merdules a Battaglia', stars: [50, 100], starUnit: 'punti vita', unlock: 'elisir' },
+  { id: 'mammuthones', place: 'La notte dei campanacci', icon: '🔔',
+    desc: 'Nella notte si sentono i campanacci avvicinarsi. La sfida finale: il Mammuthones, a Battaglia, con 200 punti vita.',
+    foe: { name: 'Il Mammuthones', img: 'mammuthones', icon: '🔔', level: 'hard', style: 'boss', hp: 200,
+      quote: 'Dlon… dlon… (il suono dei campanacci si fa sempre più vicino)',
+      lines: ['Dlon! Dlon!', 'I campanacci suonano per te…'] },
+    rules: 'battle', goal: { type: 'beat' }, goalText: 'Batti il Mammuthones a Battaglia (lui ha 200 punti vita)', stars: [40, 90], starUnit: 'punti vita' },
 ];
 const ADV_KEY = 'cd.adv';
 const loadAdv = () => { try { return JSON.parse(localStorage.getItem(ADV_KEY)) || { stars: {} }; } catch { return { stars: {} }; } };
@@ -139,14 +147,40 @@ const saveAdv = a => localStorage.setItem(ADV_KEY, JSON.stringify(a));
 const stageUnlocked = (a, i) => i === 0 || (a.stars[STAGES[i - 1].id] || 0) > 0;
 const charmsOwned = a => STAGES.filter(s => s.unlock && (a.stars[s.id] || 0) > 0).map(s => s.unlock);
 
-// Quanto "vale" per il computer segnare `sc` punti nella casella `id`.
+// Stili di gioco degli avversari dell'avventura
+const STYLE_STOP = { prudente: 2, impulsivo: 5, stelle: -2 };   // quanto preferiscono fermarsi
+const maxHpOf = p => p.maxHp || MAX_HP;
+
 function utility(id, sc, p) {
+  let u = baseUtility(id, sc, p);
+  const cat = CAT[id];
+  switch (p.style) {
+    case 'prudente':
+      if (cat.face && upperSum(p) < BONUS_AT) u += (sc - cat.face * 3) * 1.3 + (sc >= cat.face * 3 ? 8 : 0);
+      if (!cat.face && sc === 0) u -= 6;
+      break;
+    case 'accumulatore':
+      if (id === 'tris' || id === 'poker' || id === 'chance') u += (sc - 18) * 0.5;
+      if (cat.face >= 4) u += sc * 0.15;
+      break;
+    case 'stelle':
+      if (['cinq', 'large', 'small', 'mono'].includes(id) && sc > 0) u += 12;
+      break;
+    case 'aggressivo':
+      if (p.battle) u *= cat.face ? 0.5 : 1.25;
+      break;
+  }
+  return u;
+}
+
+// Quanto "vale" per il computer segnare `sc` punti nella casella `id`.
+function baseUtility(id, sc, p) {
   let u = sc;
   const cat = CAT[id];
   if (p.battle) {
     // Battaglia: la parte alta cura (utile solo se si è feriti), la parte bassa attacca
     if (cat.face) {
-      const heal = Math.min(sc, MAX_HP - p.hp);
+      const heal = Math.min(sc, maxHpOf(p) - p.hp);
       return heal * 0.85 + (upperSum(p) < BONUS_AT && sc >= cat.face * 3 ? 4 : 0) - (sc === 0 ? 1 : 0);
     }
     if (sc >= (p._oppHp ?? MAX_HP)) u += 300;
@@ -181,7 +215,7 @@ const rnd6 = () => 1 + Math.floor(Math.random() * 6);
 // Restituisce la maschera di dadi da tenere (31 = tienili tutti, cioè fermati).
 function bestKeep(d, p, level, col) {
   const { sims, noise } = LEVELS[level];
-  let bestMask = 31, bestVal = bestUtility(d, p, col);
+  let bestMask = 31, bestVal = bestUtility(d, p, col) + (STYLE_STOP[p.style] || 0);
   const tmp = [0, 0, 0, 0, 0], tmpC = ['', '', '', '', ''];
   for (let mask = 0; mask < 31; mask++) {
     let tot = 0;
@@ -480,6 +514,10 @@ const ROLL_WORDS = ['nessun lancio', 'un lancio', 'due lanci', 'tre lanci', 'qua
 
 // setup: { mode: 'cpu'|'duo'|'solo'|'adv', level, name1, name2, stage, charm }
 function newGame(setup) {
+  if (setup.mode === 'adv') {
+    const st = STAGES[setup.stage];
+    setup = { ...setup, rainbow: st.rules === 'rainbow', battle: st.rules === 'battle' };
+  }
   lastSetup = setup;
   const mk = (name, cpu = false) => ({ name, cpu, scores: {}, extra: 0, rainbow: !!setup.rainbow, battle: !!setup.battle, hp: MAX_HP });
   const players = [mk(setup.name1 || (setup.mode === 'duo' ? 'Giocatore 1' : 'Tu'))];
@@ -491,7 +529,11 @@ function newGame(setup) {
     if (st.foe) {
       const foe = mk(st.foe.name, true);
       foe.icon = st.foe.icon;
+      foe.img = st.foe.img;
+      foe.style = st.foe.style;
+      foe.lines = st.foe.lines;
       foe.extra = st.foe.head || 0;
+      if (st.foe.hp) foe.hp = foe.maxHp = st.foe.hp;
       players.push(foe);
       level = st.foe.level;
     }
@@ -729,15 +771,20 @@ function commit(id) {
   let msg = null;
   if (isCinq(G.dice) && p.scores.cinq === 50) { p.extra += CINQ_BONUS; msg = line('extra'); }
   p.scores[id] = sc;
+  let doubled = false;
   if (G.adv?.double && !p.cpu) {
     G.adv.double = false;
-    p.extra += sc;
-    msg = sc ? `L'Elisir raddoppia: +${sc} punti extra!` : "Peccato, l'Elisir su uno zero resta zero.";
+    doubled = true;
+    if (!G.battle) {
+      p.extra += sc;
+      msg = sc ? `L'Elisir raddoppia: +${sc} punti extra!` : "Peccato, l'Elisir su uno zero resta zero.";
+    }
   }
   if (!hadBonus && bonusOf(p) > 0) msg = line('bonus');
   if (sc === 0 && !msg && !p.cpu) { if (Math.random() < 0.55) { msg = sline('teaseZero', 'bad', 0.4); mood('smirk', 2600); } else { msg = line('zero'); mood('sad'); } }
   else if (!msg && !p.cpu && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) { msg = sline('teaseWaste', 'bad', 0.35); mood('smirk', 2600); }
   else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc >= 25 && Math.random() < 0.6) { msg = sline('gloat', 'gloat', 0.5); mood('happy'); }
+  else if (!msg && p.cpu && p.lines && sc >= 25 && Math.random() < 0.6) { msg = `${p.name}: «${pick(p.lines)}»`; mood('sad'); }
   if (!p.cpu && (sc >= 30 || (!hadBonus && bonusOf(p) > 0))) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
   let ko = false;
@@ -748,7 +795,8 @@ function commit(id) {
     else hit += sc;
     if (!hadBonus && bonusOf(p) > 0) heal += BATTLE_BONUS_HEAL;
     if (isCinq(G.dice) && p.extra > 0 && p.scores.cinq === 50 && id !== 'cinq') hit += BATTLE_EXTRA_HIT;
-    heal = Math.min(heal, MAX_HP - p.hp);
+    if (doubled) { heal *= 2; hit *= 2; }
+    heal = Math.min(heal, maxHpOf(p) - p.hp);
     p.hp += heal;
     hit = Math.min(hit, opp.hp);
     opp.hp -= hit;
@@ -843,7 +891,7 @@ function endGame() {
     const bits = [ok ? st.goalText + ': fatto!' : `Obiettivo: ${st.goalText.toLowerCase()}.`];
     if (ok && before === 0 && st.unlock) bits.push(`Hai ottenuto ${CHARMS[st.unlock].icon} ${CHARMS[st.unlock].name}!`);
     if (ok && before === 0 && G.adv.stage === STAGES.length - 1) bits.push('Hai completato l\'avventura. Tziu Gonario è fiero di te!');
-    if (ok && stars < 3) bits.push(`Prossima stella a ${st.stars[stars - 1]} punti.`);
+    if (ok && stars < 3) bits.push(`Prossima stella a ${st.stars[stars - 1]} ${st.starUnit || 'punti'}.`);
     note = bits.join(' ');
     if (ok && G.adv.stage < STAGES.length - 1) $('#btnNext').hidden = false;
   }
@@ -869,7 +917,7 @@ function renderMap() {
   $('#mapList').innerHTML = STAGES.map((s, i) => {
     const open = stageUnlocked(a, i), st = a.stars[s.id] || 0;
     return `<button class="stage ${open ? '' : 'locked'} ${st ? 'done' : ''}" data-i="${i}" ${open ? '' : 'disabled'}>
-      <span class="medal">${open ? s.icon : '🔒'}</span>
+      <span class="medal">${open ? avatarHTML(s.foe ? rivalSrc(s.foe.img) : s.portrait) : '🔒'}</span>
       <span class="info"><small>Tappa ${i + 1}</small><b>${s.place}</b><em>${open ? (s.foe ? s.foe.name : 'Tziu Gonario') : 'Bloccata'}</em></span>
       <span class="stars">${[0, 1, 2].map(k => `<span class="${k < st ? 'on' : ''}">★</span>`).join('')}</span>
     </button>`;
@@ -883,7 +931,7 @@ function openBrief(i) {
   briefStage = i;
   const s = STAGES[i], a = loadAdv();
   const owned = charmsOwned(a);
-  $('#briefIcon').textContent = s.foe ? s.foe.icon : s.icon;
+  $('#briefIcon').innerHTML = avatarHTML(s.foe ? rivalSrc(s.foe.img) : s.portrait);
   $('#briefStep').textContent = `Tappa ${i + 1} di ${STAGES.length}`;
   $('#briefPlace').textContent = s.place;
   $('#briefDesc').textContent = s.desc;
@@ -891,7 +939,7 @@ function openBrief(i) {
   $('#briefQuote').textContent = `«${s.foe ? s.foe.quote : s.intro}»`;
   $('#briefGoal').textContent = s.goalText;
   $('#briefStars').innerHTML =
-    `<span><b>★</b> obiettivo</span><span><b>★★</b> ${s.stars[0]} punti</span><span><b>★★★</b> ${s.stars[1]} punti</span>`;
+    `<span><b>★</b> obiettivo</span><span><b>★★</b> ${s.stars[0]} ${s.starUnit || 'punti'}</span><span><b>★★★</b> ${s.stars[1]} ${s.starUnit || 'punti'}</span>`;
   const seg = $('#segCharm');
   seg.innerHTML = `<button data-v="" class="on">Nessuno</button>` +
     owned.map(id => `<button data-v="${id}" title="${CHARMS[id].desc}">${CHARMS[id].icon} ${CHARMS[id].name}</button>`).join('');
@@ -932,6 +980,9 @@ function setDie(el, v, spin = false) {
 const haptic = pattern => { try { navigator.vibrate?.(pattern); } catch {} };
 
 // Numeri che salgono invece di cambiare di colpo
+const rivalSrc = img => `img/rivali/${img}.webp`;
+const avatarHTML = (src, alt = '') => `<img class="ava" src="${src}" alt="${alt}" draggable="false">`;
+
 const shownTotal = q => (G?.battle ? q.hp : totalOf(q));
 
 function battleFx(j, text, kind) {
@@ -1069,7 +1120,7 @@ function buildSheet() {
   const row = c => `<tr data-id="${c.id}"><td class="lbl"><span>${c.label}</span><small>${c.hint}</small></td>${G.players.map((_, j) => `<td class="cell" data-p="${j}"></td>`).join('')}</tr>`;
   const sumRow = (cls, label) => `<tr class="sum ${cls}"><td class="lbl"><span>${label}</span></td>${G.players.map((_, j) => `<td data-p="${j}"></td>`).join('')}</tr>`;
   $('#players').innerHTML = G.players.map((q, j) =>
-    `<div class="chip${G.battle ? ' battle' : ''}" data-p="${j}"><span>${q.icon ? q.icon + ' ' : ''}${esc(q.name)}</span><b data-val="${shownTotal(q)}">${shownTotal(q)}</b>${G.battle ? '<div class="hp"><i></i></div>' : ''}</div>`).join('');
+    `<div class="chip${G.battle ? ' battle' : ''}" data-p="${j}"><span>${q.img ? `<i class="chip-ava">${avatarHTML(rivalSrc(q.img))}</i>` : q.icon ? q.icon + ' ' : ''}${esc(q.name)}</span><b data-val="${shownTotal(q)}">${shownTotal(q)}</b>${G.battle ? '<div class="hp"><i></i></div>' : ''}</div>`).join('');
   buildBoard();
   $('#sheet').className = 'sheet' + (two ? ' two' : '');
   $('#sheet').innerHTML = head + '<tbody>' +
@@ -1119,7 +1170,7 @@ function renderBoard(p, canAct) {
     if (done) { t.classList.add('done'); val.textContent = p.scores[id]; if (!p.scores[id]) t.classList.add('zero'); }
     else if (rolled()) {
       const v = scoreFor(id, G.dice, joker, G.colors);
-      val.textContent = G.battle && v ? (CAT[id].face ? `+${Math.min(v, MAX_HP - p.hp)}` : `−${v}`) : v;
+      val.textContent = G.battle && v ? (CAT[id].face ? `+${Math.min(v, maxHpOf(p) - p.hp)}` : `−${v}`) : v;
       t.classList.add('preview');
       if (!v) t.classList.add('zero');
       if (v > bestV) { bestV = v; best = t; }
@@ -1154,7 +1205,7 @@ function render() {
     const q = G.players[j];
     animateNum(ch.querySelector('b'), shownTotal(q));
     if (G.battle) {
-      ch.querySelector('.hp i').style.width = `${Math.round(q.hp / MAX_HP * 100)}%`;
+      ch.querySelector('.hp i').style.width = `${Math.round(q.hp / maxHpOf(q) * 100)}%`;
       ch.classList.toggle('low', q.hp <= 30);
     }
   });

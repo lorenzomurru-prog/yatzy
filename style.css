@@ -589,6 +589,13 @@ tr:has(.cell.pickable) .lbl { cursor: pointer; }
 /* Traduzione delle frasi in sardo */
 .bubble small.tr { display: block; margin-top: 4px; font: italic 500 13px var(--font-ui); color: #8a6a52; animation: fade .4s ease backwards; }
 
+/* Ritratti degli avversari */
+.medal { overflow: hidden; }
+.medal .ava { width: 150%; height: 150%; margin-top: 18%; object-fit: cover; object-position: 50% 0; }
+.medal.big .ava { margin-top: 22%; }
+.chip-ava { display: inline-block; width: 26px; height: 26px; margin-right: 6px; vertical-align: middle; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 40% 35%, #7a3326, #3a1416); border: 1.5px solid var(--copper); }
+.chip-ava .ava { width: 160%; height: 160%; margin: 2px 0 0 -30%; object-fit: cover; object-position: 50% 0; }
+
 /* ── Fine partita ── */
 .overlay {
   position: fixed; inset: 0; z-index: 10;

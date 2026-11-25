@@ -1,8 +1,10 @@
 // Cache per giocare offline. Cambia VERSION quando aggiorni i file.
-const VERSION = 'cd-v12';
+const VERSION = 'cd-v13';
 const FILES = ['./', 'index.html', 'style.css', 'game.js', 'icon.svg', 'manifest.webmanifest',
   'img/gonario/idle.webp', 'img/gonario/blink.webp', 'img/gonario/talk.webp', 'img/gonario/happy.webp',
-  'img/gonario/wow.webp', 'img/gonario/smirk.webp', 'img/gonario/sad.webp', 'img/gonario/think.webp', 'img/gonario/ballo.webp'];
+  'img/gonario/wow.webp', 'img/gonario/smirk.webp', 'img/gonario/sad.webp', 'img/gonario/think.webp', 'img/gonario/ballo.webp',
+  'img/rivali/gavinedda.webp', 'img/rivali/casaro.webp', 'img/rivali/barista.webp', 'img/rivali/componidori.webp',
+  'img/rivali/merdules.webp', 'img/rivali/mammuthones.webp'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
