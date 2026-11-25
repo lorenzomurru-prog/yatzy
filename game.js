@@ -508,6 +508,9 @@ let lastSetup = null;  // per la rivincita
 let busy = false;      // animazione o turno del computer
 
 const curP = () => G.players[G.cur];
+// Online: ognuno controlla solo il proprio giocatore
+const isMe = p => !p.cpu && (!G.online || G.players.indexOf(p) === G.online.me);
+const myTurn = () => isMe(curP());
 const rolled = () => G.hasRolled;
 const stageOf = () => (G?.adv ? STAGES[G.adv.stage] : null);
 const ROLL_WORDS = ['nessun lancio', 'un lancio', 'due lanci', 'tre lanci', 'quattro lanci', 'cinque lanci'];
@@ -524,6 +527,7 @@ function newGame(setup) {
   let level = setup.level, maxRolls = 3, adv = null;
   if (setup.mode === 'cpu') players.push(mk('Tziu Gonario', true));
   if (setup.mode === 'duo') players.push(mk(setup.name2 || 'Giocatore 2'));
+  if (setup.mode === 'online') players.splice(0, players.length, mk(setup.names[0]), mk(setup.names[1]));
   if (setup.mode === 'adv') {
     const st = STAGES[setup.stage];
     if (st.foe) {
@@ -540,7 +544,8 @@ function newGame(setup) {
     maxRolls = st.rolls || 3;
     adv = { stage: setup.stage, charm: setup.charm || null, charmUsed: false, armed: null, double: false };
   }
-  G = { players, cur: 0, round: 1, rounds: catsOf(players[0]).length, rainbow: !!setup.rainbow, battle: !!setup.battle, colors: ['', '', '', '', ''], level, maxRolls, adv, dice: [0, 0, 0, 0, 0], held: [false, false, false, false, false], rollsLeft: maxRolls, rollsTotal: maxRolls, hasRolled: false, sel: null };
+  G = { players, cur: 0, round: 1, rounds: catsOf(players[0]).length, rainbow: !!setup.rainbow, battle: !!setup.battle, colors: ['', '', '', '', ''], level, maxRolls, adv, dice: [0, 0, 0, 0, 0], held: [false, false, false, false, false], rollsLeft: maxRolls, rollsTotal: maxRolls, hasRolled: false, sel: null,
+    online: setup.mode === 'online' ? { me: setup.me } : null };
   show('game');
   buildSheet();
   const st = stageOf();
@@ -549,7 +554,7 @@ function newGame(setup) {
 }
 
 function save() {
-  if (!G) return;
+  if (!G || G.online) return;
   localStorage.setItem(SAVE_KEY, JSON.stringify({ G, lastSetup }));
 }
 function clearSave() { localStorage.removeItem(SAVE_KEY); }
@@ -583,6 +588,9 @@ function startTurn(first = false) {
     say(p.name === 'Tziu Gonario' ? line('myTurn') : line('foeTurn', { n: p.name }));
     mood('think', 2500);
     cpuTurn();
+  } else if (G.online) {
+    say(myTurn() ? line('yourTurnTu') : line('foeTurn', { n: p.name }));
+    if (!myTurn()) mood('think', 2000);
   } else if (!first && G.players.length > 1) {
     say(p.name === 'Tu' ? line('yourTurnTu') : line('yourTurn', { n: p.name }));
   }
@@ -632,7 +640,7 @@ function cameo(text, kind = 'cheer', force = false) {
   box._t = setTimeout(() => { box.classList.remove('in'); box.classList.add('out'); setTimeout(() => { box.hidden = true; }, 500); }, clip ? CLIP_MS : 2800);
 }
 
-async function rollDice(which) {
+async function rollDice(which, preset) {
   busy = true;
   G.sel = null;
   Sound.rattle();
@@ -647,8 +655,8 @@ async function rollDice(which) {
     const dr = el.getBoundingClientRect();
     el.style.setProperty('--fx', `${Math.round(cr.left + cr.width * 0.3 - (dr.left + dr.width / 2))}px`);
     el.style.setProperty('--fy', `${Math.round(cr.top + cr.height * 0.2 - (dr.top + dr.height / 2))}px`);
-    G.dice[i] = rnd6();
-    if (G.rainbow) { G.colors[i] = rndGem(); el.dataset.c = G.colors[i]; }
+    G.dice[i] = preset ? preset.dice[i] : rnd6();
+    if (G.rainbow) { G.colors[i] = preset ? preset.colors[i] : rndGem(); el.dataset.c = G.colors[i]; }
     el.classList.remove('rolling', 'blank');
     void el.offsetWidth;
     el.style.setProperty('--d', `${Math.floor(Math.random() * 140)}ms`);
@@ -662,8 +670,8 @@ async function rollDice(which) {
   busy = false;
 }
 
-async function doRoll() {
-  await rollDice([0, 1, 2, 3, 4].filter(i => !G.held[i]));
+async function doRoll(preset) {
+  await rollDice([0, 1, 2, 3, 4].filter(i => !G.held[i]), preset);
   G.rollsLeft--;
   G.hasRolled = true;
   render();
@@ -671,7 +679,7 @@ async function doRoll() {
 }
 
 function react() {
-  const d = G.dice, c = counts(d), human = !curP().cpu;
+  const d = G.dice, c = counts(d), human = isMe(curP());
   if (isCinq(d)) { mood('wow', 3000); say(line('cinq')); cameo(Math.random() < 0.5 ? SARDO.cinq[0] : line('cinq'), 'wow', true); Sound.fanfare(); FX.confetti(); haptic([40, 60, 40, 60, 80]); }
   else if (hasRun(d, 5)) { mood('happy'); say(line('large')); if (human) cameo(line('large'), 'dance'); FX.burstAt($('#tray'), 50); haptic([30, 40, 30]); }
   else if (c.includes(3) && c.includes(2)) { mood('happy'); say(line('full')); FX.burstAt($('#tray'), 35); }
@@ -683,13 +691,20 @@ function react() {
 }
 
 async function humanRoll() {
-  if (busy || curP().cpu || G.rollsLeft === 0) return;
+  if (busy || !myTurn() || G.rollsLeft === 0) return;
   if (G.adv) G.adv.armed = null;
+  if (G.online) {
+    // decido qui i valori e li mando subito, così i dadi rotolano insieme sui due telefoni
+    const preset = { dice: G.dice.map((v, i) => (G.held[i] ? v : rnd6())), colors: G.colors.map((c, i) => (G.held[i] || !G.rainbow ? c : rndGem())) };
+    netSend({ t: 'roll', held: G.held, ...preset });
+    await doRoll(preset);
+    return;
+  }
   await doRoll();
 }
 
 async function dieClick(i) {
-  if (busy || curP().cpu || !rolled()) return;
+  if (busy || !myTurn() || !rolled()) return;
   const armed = G.adv?.armed;
   if (armed === 'lente') {
     G.adv.armed = null;
@@ -706,6 +721,7 @@ async function dieClick(i) {
   if (G.rollsLeft === 0) return;
   G.held[i] = !G.held[i];
   Sound.click();
+  if (G.online) netSend({ t: 'hold', held: G.held });
   render();
 }
 
@@ -755,10 +771,16 @@ function useCharm() {
 }
 
 function choose(id) {
-  if (busy || curP().cpu || !rolled() || curP().scores[id] !== undefined) return;
-  if (G.sel === id) return commit(id);
+  if (busy || !myTurn() || !rolled() || curP().scores[id] !== undefined) return;
+  if (G.sel === id) {
+    if (G.online) netSend({ t: 'commit', id });
+    commit(id);
+    if (G.online) netSend({ t: 'snap', s: snapshot() });
+    return;
+  }
   G.sel = id;
   Sound.click();
+  if (G.online) netSend({ t: 'sel', id });
   render();
 }
 
@@ -781,11 +803,11 @@ function commit(id) {
     }
   }
   if (!hadBonus && bonusOf(p) > 0) msg = line('bonus');
-  if (sc === 0 && !msg && !p.cpu) { if (Math.random() < 0.55) { msg = sline('teaseZero', 'bad', 0.4); mood('smirk', 2600); } else { msg = line('zero'); mood('sad'); } }
-  else if (!msg && !p.cpu && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) { msg = sline('teaseWaste', 'bad', 0.35); mood('smirk', 2600); }
+  if (sc === 0 && !msg && isMe(p)) { if (Math.random() < 0.55) { msg = sline('teaseZero', 'bad', 0.4); mood('smirk', 2600); } else { msg = line('zero'); mood('sad'); } }
+  else if (!msg && isMe(p) && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) { msg = sline('teaseWaste', 'bad', 0.35); mood('smirk', 2600); }
   else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc >= 25 && Math.random() < 0.6) { msg = sline('gloat', 'gloat', 0.5); mood('happy'); }
   else if (!msg && p.cpu && p.lines && sc >= 25 && Math.random() < 0.6) { msg = `${p.name}: «${pick(p.lines)}»`; mood('sad'); }
-  if (!p.cpu && (sc >= 30 || (!hadBonus && bonusOf(p) > 0))) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
+  if (isMe(p) && (sc >= 30 || (!hadBonus && bonusOf(p) > 0))) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
   let ko = false;
   if (G.battle) {
@@ -855,7 +877,7 @@ function endGame() {
   const ps = G.players;
   const totals = ps.map(shownTotal);
   const top = Math.max(...totals);
-  const human = G.battle ? [] : ps.filter(p => !p.cpu).map(totalOf);
+  const human = G.battle ? [] : ps.filter(isMe).map(totalOf);
   const prevBest = Number(localStorage.getItem(BEST_KEY) || 0);
   const best = Math.max(prevBest, ...human);
   if (best > 0) localStorage.setItem(BEST_KEY, best);
@@ -874,6 +896,8 @@ function endGame() {
 
   $('#btnNext').hidden = true;
   $('#btnAgain').textContent = G.adv ? 'Riprova' : 'Rivincita';
+  $('#btnAgain').disabled = false;
+  $('#btnAgain').hidden = false;
   $('#btnEndMenu').textContent = G.adv ? 'Mappa' : 'Menù';
 
   if (G.adv) {
@@ -1193,7 +1217,7 @@ function renderBoard(p, canAct) {
 function render() {
   if (!G) return;
   const p = curP();
-  const canAct = !busy && !p.cpu;
+  const canAct = !busy && myTurn() && !G.online?.gone;
 
   $('#roundNo').textContent = Math.min(G.round, G.rounds);
   $('#roundOf').textContent = G.rounds;
@@ -1260,6 +1284,7 @@ function render() {
   $('#roundLabel').textContent = stageOf() ? stageOf().place : '';
 
   renderBoard(p, canAct);
+  $('#emotes').hidden = !G.online || !!G.online.gone;
 
   // foglio punti
   const joker = jokerFor(p, G.dice);
@@ -1333,6 +1358,271 @@ function say(text, target = '#say') {
 
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
+/* ───────────── Sfida online: collegamento diretto tra due telefoni (PeerJS) ───────────── */
+
+const PEER_PREFIX = 'yatzy-tziugonario-';
+const PEERJS_URL = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+const NET = { peer: null, conn: null, open: false, role: null, code: null, oppName: '', queue: Promise.resolve(), waitTimer: null };
+const EMOTES = ['Ajò!|Dai!', 'Mischinu!|Poverino!', 'Eja!|Sì!', 'Ma bae!|Ma va\'!', 'Ses prus lentu de una tostoine.|Sei più lento di una tartaruga.', 'A chent\'annos!|Cent\'anni!'];
+
+function loadPeerJS() {
+  if (window.Peer) return Promise.resolve();
+  return new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = PEERJS_URL;
+    s.onload = ok;
+    s.onerror = () => ko(new Error('peerjs'));
+    document.head.appendChild(s);
+  });
+}
+
+const randCode = () => Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('');
+const myName = () => ($('#onName').value.trim() || localStorage.getItem('cd.name') || 'Giocatore').slice(0, 14);
+const roomLink = code => `${location.origin}${location.pathname}?stanza=${code}`;
+
+function netStatus(text, kind = '') {
+  const el = $('#onStatus');
+  el.textContent = text;
+  el.className = `on-status ${kind}`;
+}
+
+function netErrText(err) {
+  switch (err?.type) {
+    case 'peer-unavailable': return 'Stanza non trovata: controlla il codice (o la stanza è stata chiusa).';
+    case 'browser-incompatible': return 'Questo browser non supporta il gioco online.';
+    case 'network': case 'server-error': case 'socket-error': case 'socket-closed':
+      return 'Problema di connessione. Controlla internet e riprova.';
+    default: return `Errore di collegamento (${err?.type || 'sconosciuto'}). Riprova.`;
+  }
+}
+
+function netReset() {
+  clearTimeout(NET.waitTimer);
+  try { NET.conn?.close(); } catch {}
+  try { NET.peer?.destroy(); } catch {}
+  Object.assign(NET, { peer: null, conn: null, open: false, role: null, code: null, oppName: '', queue: Promise.resolve() });
+  $('#roomBox').hidden = true;
+}
+
+function netLeave() {
+  // chiudo solo QUESTA connessione (con un attimo di ritardo per far partire il saluto), senza toccare una stanza nuova
+  const { conn, peer } = NET;
+  netSend({ t: 'bye' });
+  clearTimeout(NET.waitTimer);
+  Object.assign(NET, { peer: null, conn: null, open: false, role: null, code: null, oppName: '', queue: Promise.resolve() });
+  $('#roomBox').hidden = true;
+  setTimeout(() => { try { conn?.close(); } catch {} try { peer?.destroy(); } catch {} }, 150);
+}
+
+const netSend = msg => { if (NET.conn && NET.open) { try { NET.conn.send(msg); } catch {} } };
+
+async function hostRoom() {
+  netReset();
+  localStorage.setItem('cd.name', myName());
+  netStatus('Preparo la stanza…', 'wait');
+  try { await loadPeerJS(); } catch { return netStatus('Non riesco a caricare il gioco online. Controlla la connessione.', 'err'); }
+  const code = randCode();
+  NET.role = 'host';
+  NET.code = code;
+  const peer = NET.peer = new window.Peer(PEER_PREFIX + code);
+  peer.on('open', () => {
+    $('#roomCode').textContent = code;
+    $('#roomBox').hidden = false;
+    netStatus('In attesa del tuo amico… Mandagli il link o il codice.', 'wait');
+  });
+  peer.on('connection', conn => {
+    if (NET.conn) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 300); }); return; }
+    attachConn(conn);
+  });
+  peer.on('error', err => {
+    if (err.type === 'unavailable-id') return hostRoom();   // codice già usato: ne provo un altro
+    netStatus(netErrText(err), 'err');
+  });
+}
+
+async function joinRoom(raw) {
+  const code = String(raw || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+  if (code.length < 4) return netStatus('Il codice della stanza ha 4 lettere.', 'err');
+  netReset();
+  localStorage.setItem('cd.name', myName());
+  netStatus(`Mi collego alla stanza ${code}…`, 'wait');
+  try { await loadPeerJS(); } catch { return netStatus('Non riesco a caricare il gioco online. Controlla la connessione.', 'err'); }
+  NET.role = 'guest';
+  NET.code = code;
+  const peer = NET.peer = new window.Peer();
+  peer.on('open', () => {
+    attachConn(peer.connect(PEER_PREFIX + code, { reliable: true }));
+    NET.waitTimer = setTimeout(() => {
+      if (!NET.open) netStatus('Non riesco a collegarmi. Controllate il codice, oppure provate entrambi col Wi-Fi: su alcune reti mobili il collegamento diretto non passa.', 'err');
+    }, 15000);
+  });
+  peer.on('error', err => netStatus(netErrText(err), 'err'));
+}
+
+function attachConn(conn) {
+  NET.conn = conn;
+  conn.on('open', () => {
+    NET.open = true;
+    clearTimeout(NET.waitTimer);
+    netStatus('Collegati! Si comincia…', 'ok');
+    netSend({ t: 'hello', name: myName() });
+  });
+  conn.on('data', msg => { NET.queue = NET.queue.then(() => onNet(msg)).catch(() => {}); });
+  conn.on('close', onPeerGone);
+  conn.on('error', onPeerGone);
+}
+
+function netStartGame() {
+  const rules = segValue('segOnRules');
+  const names = [myName(), NET.oppName || 'Amico'];
+  if (names[0] === names[1]) names[1] += ' 2';
+  netSend({ t: 'start', rules, names });
+  startOnline(rules, names, 0);
+}
+
+function startOnline(rules, names, me) {
+  $('#endOverlay').hidden = true;
+  newGame({ mode: 'online', rainbow: rules === 'rainbow', battle: rules === 'battle', names, me });
+}
+
+function netRematch() {
+  if (NET.role === 'host') return netStartGame();
+  netSend({ t: 'again' });
+  $('#btnAgain').disabled = true;
+  $('#endNote').textContent = `Hai chiesto la rivincita a ${NET.oppName}…`;
+}
+
+function snapshot() {
+  return {
+    players: G.players.map(q => ({ scores: q.scores, extra: q.extra, hp: q.hp })),
+    cur: G.cur, round: G.round,
+  };
+}
+
+async function onNet(msg) {
+  if (!msg || typeof msg !== 'object') return;
+  switch (msg.t) {
+    case 'hello':
+      NET.oppName = String(msg.name || 'Amico').slice(0, 14);
+      if (NET.role === 'host') netStartGame();
+      else netStatus(`Collegato con ${NET.oppName}! Aspetto che inizi la partita…`, 'ok');
+      break;
+    case 'full':
+      netStatus('Questa stanza è già piena.', 'err');
+      break;
+    case 'start':
+      startOnline(msg.rules, msg.names, 1);
+      break;
+    case 'again':
+      if (NET.role === 'host') {
+        $('#endNote').textContent = `${NET.oppName} vuole la rivincita!`;
+        $('#btnAgain').classList.add('primary');
+      }
+      break;
+    case 'roll':
+      if (!G?.online) return;
+      G.held = msg.held;
+      await doRoll({ dice: msg.dice, colors: msg.colors });
+      break;
+    case 'hold':
+      if (!G?.online) return;
+      G.held = msg.held;
+      Sound.click();
+      render();
+      break;
+    case 'sel':
+      if (!G?.online) return;
+      G.sel = msg.id;
+      Sound.click();
+      render();
+      break;
+    case 'commit':
+      if (!G?.online) return;
+      commit(msg.id);
+      break;
+    case 'snap':
+      // riallineo punteggi e turno, nel caso qualcosa si fosse perso
+      if (!G?.online || !msg.s) return;
+      msg.s.players.forEach((q, i) => Object.assign(G.players[i], q));
+      if (G.cur !== msg.s.cur || G.round !== msg.s.round) { G.cur = msg.s.cur; G.round = msg.s.round; }
+      render();
+      break;
+    case 'emote':
+      if (!G?.online) return;
+      say(`${NET.oppName}: ${String(msg.text || '').slice(0, 120)}`);
+      mood('smirk', 2200);
+      haptic(20);
+      break;
+    case 'bye':
+      onPeerGone();
+      break;
+  }
+}
+
+function onPeerGone() {
+  if (!NET.conn) return;
+  const name = NET.oppName || 'Il tuo amico';
+  const inGame = $('#game').classList.contains('active') && G?.online;
+  NET.open = false;
+  NET.conn = null;
+  if (inGame) {
+    G.online.gone = true;
+    busy = false;
+    render();
+    $('#endTitle').textContent = 'Collegamento perso';
+    $('#endScores').innerHTML = '';
+    $('#endNote').textContent = `${name} si è scollegato. Potete creare una nuova stanza quando volete.`;
+    $('#btnNext').hidden = true;
+    $('#btnAgain').hidden = true;
+    $('#btnEndMenu').textContent = 'Menù';
+    $('#endOverlay').hidden = false;
+  } else {
+    netStatus(`${name} si è scollegato.`, 'err');
+  }
+}
+
+function sendEmote(text) {
+  if (!G?.online || !NET.open) return;
+  netSend({ t: 'emote', text });
+  const [main] = text.split('|');
+  say(`Tu: ${main}`);
+  haptic(10);
+}
+
+function buildEmotes() {
+  $('#emotes').innerHTML = EMOTES.map((e, i) => `<button class="emote" data-i="${i}">${esc(e.split('|')[0])}</button>`).join('');
+}
+
+async function shareRoom() {
+  const url = roomLink(NET.code);
+  const text = `Sfidami a Yatzy con Tziu Gonario! Codice stanza: ${NET.code}`;
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Yatzy', text, url }); return; }
+  } catch { return; }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); netStatus('Link copiato: incollalo su WhatsApp al tuo amico.', 'ok'); }
+  catch { netStatus(`Manda questo link al tuo amico: ${url}`, 'ok'); }
+}
+
+function initOnline() {
+  $('#onName').value = localStorage.getItem('cd.name') || '';
+  initSeg('segOnRules');
+  buildEmotes();
+  $('#btnOnline').addEventListener('click', () => show('online'));
+  $('#btnHost').addEventListener('click', hostRoom);
+  $('#btnJoin').addEventListener('click', () => joinRoom($('#joinCode').value));
+  $('#joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom($('#joinCode').value); });
+  $('#btnShare').addEventListener('click', shareRoom);
+  $('#emotes').addEventListener('click', e => { const b = e.target.closest('.emote'); if (b) sendEmote(EMOTES[Number(b.dataset.i)]); });
+  // link d'invito: ?stanza=ABCD
+  const code = new URLSearchParams(location.search).get('stanza');
+  if (code) {
+    history.replaceState(null, '', location.pathname);
+    show('online');
+    $('#joinCode').value = code.toUpperCase();
+    setTimeout(() => joinRoom(code), 300);
+  }
+}
+
 /* ───────────── Schermate e controlli ───────────── */
 
 function show(id) {
@@ -1341,6 +1631,7 @@ function show(id) {
   $('#facePick').hidden = true;
   if (id === 'menu') refreshMenu();
   if (id === 'map') renderMap();
+  if (id === 'menu' && NET.peer) netLeave();
 }
 
 function refreshMenu() {
@@ -1461,6 +1752,7 @@ function init() {
     newGame({ mode, level: segValue('segLevel'), rainbow: rules === 'rainbow', battle: rules === 'battle', name1, name2: $('#name2').value.trim() });
   });
 
+  initOnline();
   $('#btnRoll').addEventListener('click', humanRoll);
   $('#board').addEventListener('click', e => { const t = e.target.closest('.tile'); if (t && !t.disabled) choose(t.dataset.id); });
   $('#btnSheet').addEventListener('click', () => {
@@ -1475,9 +1767,12 @@ function init() {
     if (td && td.dataset.p !== undefined && Number(td.dataset.p) !== G.cur) return;
     choose(tr.dataset.id);
   });
-  $('#btnQuit').addEventListener('click', () => { if (!busy) show(G?.adv ? 'map' : 'menu'); });
-  $('#btnAgain').addEventListener('click', () => newGame(lastSetup));
-  $('#btnEndMenu').addEventListener('click', () => show(G?.adv ? 'map' : 'menu'));
+  $('#btnQuit').addEventListener('click', () => { if (!busy) { if (G?.online) netLeave(); show(G?.adv ? 'map' : G?.online ? 'online' : 'menu'); } });
+  $('#btnAgain').addEventListener('click', () => {
+    if (G?.online) return netRematch();
+    newGame(lastSetup);
+  });
+  $('#btnEndMenu').addEventListener('click', () => { if (G?.online) netLeave(); show(G?.adv ? 'map' : 'menu'); });
 
   // Tastiera (PC): spazio = lancia, 1-5 = tieni dado, invio = segna
   document.addEventListener('keydown', e => {

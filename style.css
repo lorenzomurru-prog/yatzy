@@ -596,6 +596,30 @@ tr:has(.cell.pickable) .lbl { cursor: pointer; }
 .chip-ava { display: inline-block; width: 26px; height: 26px; margin-right: 6px; vertical-align: middle; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 40% 35%, #7a3326, #3a1416); border: 1.5px solid var(--copper); }
 .chip-ava .ava { width: 160%; height: 160%; margin: 2px 0 0 -30%; object-fit: cover; object-position: 50% 0; }
 
+/* ── Sfida online ── */
+#btnHost { margin-top: 16px; }
+.room { text-align: center; margin-top: 16px; }
+.room-code {
+  font: 800 46px var(--font-ui); letter-spacing: .25em; color: var(--amber-l);
+  padding: 10px 0 14px; text-shadow: 0 3px 0 rgba(0, 0, 0, .35);
+}
+.or { display: flex; align-items: center; gap: 10px; margin: 20px 0 10px; color: var(--muted); font-size: 13px; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.join-row { display: flex; gap: 8px; }
+.join-row .input { margin: 0; flex: 1; text-transform: uppercase; letter-spacing: .3em; font-weight: 800; text-align: center; font-size: 22px; }
+.on-status { min-height: 22px; margin: 14px 0 0; font-size: 15px; line-height: 1.4; color: var(--muted); text-align: center; }
+.on-status.wait::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--amber); border-right-color: transparent; vertical-align: -1px; animation: spinner .8s linear infinite; }
+@keyframes spinner { to { transform: rotate(360deg); } }
+.on-status.ok { color: var(--green); }
+.on-status.err { color: #ff9a86; }
+.emotes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+.emote {
+  border: 1px solid var(--line); background: rgba(0, 0, 0, .25); color: var(--ivory);
+  border-radius: 99px; padding: 6px 11px; font: italic 600 13px var(--font-title);
+  transition: transform .1s, background .2s;
+}
+.emote:active { transform: scale(.94); background: rgba(240, 166, 64, .25); }
+
 /* ── Fine partita ── */
 .overlay {
   position: fixed; inset: 0; z-index: 10;

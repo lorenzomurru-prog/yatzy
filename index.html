@@ -28,6 +28,7 @@
       <button class="btn primary" id="btnContinue" hidden>Continua la partita</button>
       <button class="btn primary" id="btnClassic">Partita classica</button>
       <button class="btn primary" id="btnAdventure">Avventura</button>
+      <button class="btn primary" id="btnOnline">Sfida un amico online</button>
       <button class="btn ghost" id="btnRules">Regole</button>
     </nav>
     <p class="best" id="bestScore"></p>
@@ -68,6 +69,35 @@
     <input id="name1" class="input" maxlength="14" placeholder="Il tuo nome" autocomplete="off">
     <input id="name2" class="input" maxlength="14" placeholder="Secondo giocatore" autocomplete="off" hidden>
     <button class="btn primary wide" id="btnStart">Inizia</button>
+  </div>
+</section>
+
+<!-- SFIDA ONLINE -->
+<section id="online" class="screen">
+  <div class="panel">
+    <button class="link" data-go="menu">‹ Indietro</button>
+    <h2>Sfida un amico</h2>
+    <p class="muted">Giocate in due, ognuno dal suo telefono, in tempo reale.</p>
+    <p class="label">Il tuo nome</p>
+    <input id="onName" class="input" maxlength="14" placeholder="Il tuo nome" autocomplete="off">
+    <p class="label">Regole (le sceglie chi crea la stanza)</p>
+    <div class="seg" id="segOnRules">
+      <button data-v="classic" class="on">Classiche</button>
+      <button data-v="rainbow">Arcobaleno</button>
+      <button data-v="battle">Battaglia</button>
+    </div>
+    <button class="btn primary wide" id="btnHost">Crea una stanza</button>
+    <div id="roomBox" class="room" hidden>
+      <p class="label">Codice della stanza</p>
+      <div class="room-code" id="roomCode">····</div>
+      <button class="btn wide" id="btnShare">Manda il link all'amico</button>
+    </div>
+    <div class="or"><span>oppure entra con un codice</span></div>
+    <div class="join-row">
+      <input id="joinCode" class="input code" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button class="btn" id="btnJoin">Entra</button>
+    </div>
+    <p class="on-status" id="onStatus"></p>
   </div>
 </section>
 
@@ -123,6 +153,7 @@
           <button class="btn" id="btnScore" disabled>Scegli una casella</button>
         </div>
         <button class="btn charm" id="btnCharm" hidden></button>
+        <div class="emotes" id="emotes" hidden></div>
       </div>
       <div class="board" id="board"></div>
       <button class="link sheet-toggle" id="btnSheet">Foglio completo di tutti i giocatori</button>
