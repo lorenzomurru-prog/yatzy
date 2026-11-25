@@ -95,7 +95,7 @@
   <div class="panel">
     <button class="link" data-go="menu">‹ Indietro</button>
     <h2>Sfida un amico</h2>
-    <p class="muted">Giocate in due, ognuno dal suo telefono, in tempo reale.</p>
+    <p class="muted">Da 2 a 4 giocatori, ognuno dal suo telefono, in tempo reale.</p>
     <p class="label">Il tuo nome</p>
     <input id="onName" class="input" maxlength="14" placeholder="Il tuo nome" autocomplete="off">
     <p class="label">Regole (le sceglie chi crea la stanza)</p>
@@ -108,7 +108,12 @@
     <div id="roomBox" class="room" hidden>
       <p class="label">Codice della stanza</p>
       <div class="room-code" id="roomCode">····</div>
-      <button class="btn wide" id="btnShare">Manda il link all'amico</button>
+      <button class="btn wide" id="btnShare">Manda il link agli amici</button>
+    </div>
+    <div id="lobbyBox" class="lobby" hidden>
+      <p class="label" id="lobbyTitle">Giocatori nella stanza</p>
+      <div class="lobby-list" id="lobbyList"></div>
+      <button class="btn primary wide" id="btnStartOnline" hidden disabled>Inizia la partita</button>
     </div>
     <div class="or"><span>oppure entra con un codice</span></div>
     <div class="join-row">

@@ -528,6 +528,18 @@ const curP = () => G.players[G.cur];
 // Online: ognuno controlla solo il proprio giocatore
 const isMe = p => !p.cpu && (!G.online || G.players.indexOf(p) === G.online.me);
 const myTurn = () => isMe(curP());
+const alive = () => G.players.filter(q => !q.out);
+// Battaglia: si attacca l'avversario ancora in gioco con più punti vita
+const battleTarget = p => G.players.filter(q => q !== p && !q.out).sort((a, b) => b.hp - a.hp)[0] || p;
+// Passa al prossimo giocatore ancora in gioco (salta chi è fuori o si è scollegato)
+function nextTurn() {
+  const n = G.players.length;
+  for (let k = 0; k < n; k++) {
+    G.cur = (G.cur + 1) % n;
+    if (G.cur === 0) G.round++;
+    if (!G.players[G.cur].out) return;
+  }
+}
 const rolled = () => G.hasRolled;
 const stageOf = () => (G?.adv ? STAGES[G.adv.stage] : null);
 const ROLL_WORDS = ['nessun lancio', 'un lancio', 'due lanci', 'tre lanci', 'quattro lanci', 'cinque lanci'];
@@ -544,7 +556,7 @@ function newGame(setup) {
   let level = setup.level, maxRolls = 3, adv = null;
   if (setup.mode === 'cpu') players.push(mk('Tziu Gonario', true));
   if (setup.mode === 'duo') players.push(mk(setup.name2 || 'Giocatore 2'));
-  if (setup.mode === 'online') players.splice(0, players.length, mk(setup.names[0]), mk(setup.names[1]));
+  if (setup.mode === 'online') players.splice(0, players.length, ...setup.names.slice(0, 4).map(n => mk(n)));
   // ritratti: il tuo personaggio (e online quello dell'amico)
   if (setup.mode === 'online') players.forEach((q, i) => { q.ava = charSrc(setup.chars?.[i]); });
   else if (setup.mode !== 'duo') players[0].ava = charSrc(myChar());
@@ -833,7 +845,7 @@ function commit(id) {
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
   let ko = false;
   if (G.battle) {
-    const opp = G.players[1 - G.cur];
+    const opp = battleTarget(p);
     let heal = 0, hit = 0;
     if (CAT[id].face) heal += sc;
     else hit += sc;
@@ -844,10 +856,15 @@ function commit(id) {
     p.hp += heal;
     hit = Math.min(hit, opp.hp);
     opp.hp -= hit;
-    if (hit) { battleFx(1 - G.cur, `−${hit}`, 'hit'); msg = line('attack', { n: p.name, d: hit }); mood(p.cpu ? 'sad' : 'happy'); }
+    if (hit) { battleFx(G.players.indexOf(opp), `−${hit}`, 'hit'); msg = line('attack', { n: p.name, d: hit }); mood(p.cpu ? 'sad' : 'happy'); }
     else if (heal) { battleFx(G.cur, `+${heal}`, 'heal'); msg = line('heal', { d: heal }); }
     else if (!msg) msg = CAT[id].face ? line('healFull') : line('zero');
-    if (opp.hp <= 0) { ko = true; msg = line('ko', { n: opp.name }); mood('wow', 3000); }
+    if (opp.hp <= 0) {
+      opp.out = true;
+      msg = line('ko', { n: opp.name });
+      mood('wow', 3000);
+      ko = alive().length <= 1;               // in 3-4 si continua finché ne resta uno
+    }
   }
   if (msg) say(msg);
   sc === 0 ? Sound.zero() : G.battle && !CAT[id].face ? Sound.hit(sc) : Sound.score(sc >= 25 || msg);
@@ -857,8 +874,7 @@ function commit(id) {
   haptic(sc ? (G.battle && !CAT[id].face ? [30, 30, 60] : 18) : [10, 40, 10]);
   if (ko) { busy = true; render(); setTimeout(() => { busy = false; endGame(); }, 900); return; }
 
-  G.cur = (G.cur + 1) % G.players.length;
-  if (G.cur === 0) G.round++;
+  nextTurn();
   if (G.round > G.rounds) { render(); return endGame(); }
   save();
   setTimeout(() => startTurn(), msg ? 900 : 450);
@@ -868,7 +884,7 @@ function commit(id) {
 async function cpuTurn() {
   busy = true;
   const p = curP();
-  if (G.battle) p._oppHp = G.players[1 - G.cur].hp;
+  if (G.battle) p._oppHp = battleTarget(p).hp;
   render();
   await sleep(900);
   while (G.rollsLeft > 0) {
@@ -896,6 +912,7 @@ async function cpuTurn() {
 
 function endGame() {
   clearSave();
+  if (G.online) G.online.over = true;
   const ps = G.players;
   const totals = ps.map(shownTotal);
   const top = Math.max(...totals);
@@ -1178,6 +1195,7 @@ function buildSheet() {
   $('#players').innerHTML = G.players.map((q, j) =>
     `<div class="chip${G.battle ? ' battle' : ''}" data-p="${j}"><span>${q.ava ? `<i class="chip-ava">${avatarHTML(q.ava)}</i>` : q.icon ? q.icon + ' ' : ''}${esc(q.name)}</span><b data-val="${shownTotal(q)}">${shownTotal(q)}</b>${G.battle ? '<div class="hp"><i></i></div>' : ''}</div>`).join('');
   buildBoard();
+  $('#players').classList.toggle('many', G.players.length > 2);
   $('#sheet').className = 'sheet' + (two ? ' two' : '');
   $('#sheet').innerHTML = head + '<tbody>' +
     UPPER.map(row).join('') +
@@ -1258,6 +1276,7 @@ function render() {
   document.querySelectorAll('#players .chip').forEach(ch => {
     const j = Number(ch.dataset.p);
     ch.classList.toggle('on', j === G.cur);
+    ch.classList.toggle('out', !!G.players[j].out);
     const q = G.players[j];
     animateNum(ch.querySelector('b'), shownTotal(q));
     if (G.battle) {
@@ -1396,11 +1415,14 @@ function say(text, target = '#say') {
 
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
-/* ───────────── Sfida online: collegamento diretto tra due telefoni (PeerJS) ───────────── */
+/* ───────────── Sfida online: fino a 4 telefoni (PeerJS) ─────────────
+   Chi crea la stanza fa da centro: gli altri si collegano a lui e lui inoltra le mosse a tutti. */
 
 const PEER_PREFIX = 'yatzy-tziugonario-';
 const PEERJS_URL = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
-const NET = { peer: null, conn: null, open: false, role: null, code: null, oppName: '', queue: Promise.resolve(), waitTimer: null };
+const MAX_ONLINE = 4;
+const RELAY = new Set(['roll', 'hold', 'sel', 'commit', 'snap', 'emote']);
+const NET = { peer: null, role: null, code: null, host: null, open: false, guests: [], active: [], lobby: [], queue: Promise.resolve(), waitTimer: null };
 const EMOTES = ['Ajò!|Dai!', 'Mischinu!|Poverino!', 'Eja!|Sì!', 'Ma bae!|Ma va\'!', 'Ses prus lentu de una tostoine.|Sei più lento di una tartaruga.', 'A chent\'annos!|Cent\'anni!'];
 
 function loadPeerJS() {
@@ -1417,6 +1439,7 @@ function loadPeerJS() {
 const randCode = () => Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]).join('');
 const myName = () => ($('#onName').value.trim() || localStorage.getItem('cd.name') || 'Giocatore').slice(0, 14);
 const roomLink = code => `${location.origin}${location.pathname}?stanza=${code}`;
+const gameRunning = () => !!(G?.online && !G.online.over && $('#game').classList.contains('active'));
 
 function netStatus(text, kind = '') {
   const el = $('#onStatus');
@@ -1434,25 +1457,40 @@ function netErrText(err) {
   }
 }
 
-function netReset() {
+function netClear() {
   clearTimeout(NET.waitTimer);
-  try { NET.conn?.close(); } catch {}
-  try { NET.peer?.destroy(); } catch {}
-  Object.assign(NET, { peer: null, conn: null, open: false, role: null, code: null, oppName: '', queue: Promise.resolve() });
+  Object.assign(NET, { peer: null, role: null, code: null, host: null, open: false, guests: [], active: [], lobby: [], queue: Promise.resolve() });
   $('#roomBox').hidden = true;
+  $('#lobbyBox').hidden = true;
+}
+
+function netReset() {
+  const { peer, host, guests } = NET;
+  netClear();
+  try { host?.close(); } catch {}
+  guests.forEach(g => { try { g.conn.close(); } catch {} });
+  try { peer?.destroy(); } catch {}
 }
 
 function netLeave() {
-  // chiudo solo QUESTA connessione (con un attimo di ritardo per far partire il saluto), senza toccare una stanza nuova
-  const { conn, peer } = NET;
+  // saluto e chiudo solo QUESTA stanza, con un attimo di ritardo per far partire il messaggio
+  const { peer, host, guests } = NET;
   netSend({ t: 'bye' });
-  clearTimeout(NET.waitTimer);
-  Object.assign(NET, { peer: null, conn: null, open: false, role: null, code: null, oppName: '', queue: Promise.resolve() });
-  $('#roomBox').hidden = true;
-  setTimeout(() => { try { conn?.close(); } catch {} try { peer?.destroy(); } catch {} }, 150);
+  netClear();
+  setTimeout(() => {
+    try { host?.close(); } catch {}
+    guests.forEach(g => { try { g.conn.close(); } catch {} });
+    try { peer?.destroy(); } catch {}
+  }, 150);
 }
 
-const netSend = msg => { if (NET.conn && NET.open) { try { NET.conn.send(msg); } catch {} } };
+// Il centro manda a tutti (tranne chi ha mandato il messaggio); gli altri mandano al centro
+function netSend(msg, except = null) {
+  if (NET.role === 'host') NET.guests.forEach(g => { if (g.open && g !== except) { try { g.conn.send(msg); } catch {} } });
+  else if (NET.host && NET.open) { try { NET.host.send(msg); } catch {} }
+}
+
+/* ── Creare la stanza ── */
 
 async function hostRoom() {
   netReset();
@@ -1466,17 +1504,87 @@ async function hostRoom() {
   peer.on('open', () => {
     $('#roomCode').textContent = code;
     $('#roomBox').hidden = false;
-    netStatus('In attesa del tuo amico… Mandagli il link o il codice.', 'wait');
+    netStatus('Mandate il link o il codice agli amici (fino a 4 giocatori).', 'wait');
+    broadcastLobby();
   });
   peer.on('connection', conn => {
-    if (NET.conn) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 300); }); return; }
-    attachConn(conn);
+    const refuse = t => conn.on('open', () => { conn.send({ t }); setTimeout(() => conn.close(), 400); });
+    if (gameRunning()) return refuse('busy');
+    if (NET.guests.length >= MAX_ONLINE - 1) return refuse('full');
+    attachGuest(conn);
   });
   peer.on('error', err => {
     if (err.type === 'unavailable-id') return hostRoom();   // codice già usato: ne provo un altro
+    if (err.type === 'peer-unavailable') return;          // un ospite sparito: non è grave
     netStatus(netErrText(err), 'err');
   });
 }
+
+function attachGuest(conn) {
+  const g = { conn, name: '', char: null, open: false };
+  NET.guests.push(g);
+  conn.on('open', () => { g.open = true; });
+  conn.on('data', msg => { NET.queue = NET.queue.then(() => onHostData(g, msg)).catch(() => {}); });
+  conn.on('close', () => onGuestGone(g));
+  conn.on('error', () => onGuestGone(g));
+}
+
+function broadcastLobby() {
+  const ready = NET.guests.filter(g => g.open && g.name);
+  NET.lobby = [{ name: myName(), char: myChar() }, ...ready.map(g => ({ name: g.name, char: g.char }))];
+  netSend({ t: 'lobby', players: NET.lobby, host: myName() });
+  renderLobby();
+}
+
+function renderLobby(hostName) {
+  const box = $('#lobbyBox');
+  box.hidden = NET.lobby.length === 0;
+  $('#lobbyTitle').textContent = `Giocatori nella stanza (${NET.lobby.length}/${MAX_ONLINE})`;
+  $('#lobbyList').innerHTML = NET.lobby.map((p, i) => {
+    const src = charSrc(p.char);
+    return `<div class="lobby-p">${src ? `<i class="chip-ava">${avatarHTML(src)}</i>` : '<i class="chip-ava"></i>'}<b>${esc(p.name)}</b>${i === 0 ? '<small>crea la stanza</small>' : ''}</div>`;
+  }).join('');
+  const startBtn = $('#btnStartOnline');
+  startBtn.hidden = NET.role !== 'host';
+  startBtn.disabled = NET.lobby.length < 2;
+  startBtn.textContent = NET.lobby.length < 2 ? 'Aspetta almeno un amico…' : `Inizia la partita in ${NET.lobby.length}`;
+  if (NET.role === 'guest') netStatus(`Collegato! Aspetta che ${hostName || NET.lobby[0]?.name || 'chi ha creato la stanza'} inizi la partita…`, 'ok');
+}
+
+async function onHostData(g, msg) {
+  if (!msg || typeof msg !== 'object') return;
+  if (msg.t === 'hello') {
+    g.name = String(msg.name || 'Amico').slice(0, 14);
+    g.char = typeof msg.char === 'string' ? msg.char : null;
+    if (!gameRunning()) broadcastLobby();
+    return;
+  }
+  if (msg.t === 'bye') return onGuestGone(g);
+  if (msg.t === 'again') {
+    if ($('#endOverlay').hidden) return;
+    $('#endNote').textContent = `${g.name} vuole la rivincita!`;
+    $('#btnAgain').classList.add('primary');
+    return;
+  }
+  if (RELAY.has(msg.t)) {
+    netSend(msg, g);          // lo giro agli altri
+    await applyAction(msg);   // e lo applico qui
+  }
+}
+
+function netStartGame() {
+  const rules = segValue('segOnRules');
+  NET.active = NET.guests.filter(g => g.open && g.name);
+  if (NET.active.length === 0) return netStatus('Serve almeno un amico nella stanza.', 'err');
+  const names = [myName(), ...NET.active.map(g => g.name)];
+  // nomi doppi: aggiungo un numero
+  names.forEach((n, i) => { if (names.indexOf(n) !== i) names[i] = `${n} ${i + 1}`; });
+  const chars = [myChar(), ...NET.active.map(g => g.char)];
+  NET.active.forEach((g, i) => { try { g.conn.send({ t: 'start', rules, names, chars, me: i + 1 }); } catch {} });
+  startOnline(rules, names, 0, chars);
+}
+
+/* ── Entrare in una stanza ── */
 
 async function joinRoom(raw) {
   const code = String(raw || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
@@ -1489,143 +1597,168 @@ async function joinRoom(raw) {
   NET.code = code;
   const peer = NET.peer = new window.Peer();
   peer.on('open', () => {
-    attachConn(peer.connect(PEER_PREFIX + code, { reliable: true }));
+    const conn = NET.host = peer.connect(PEER_PREFIX + code, { reliable: true });
+    conn.on('open', () => {
+      NET.open = true;
+      clearTimeout(NET.waitTimer);
+      netStatus('Collegato! Entro nella stanza…', 'ok');
+      netSend({ t: 'hello', name: myName(), char: myChar() });
+    });
+    conn.on('data', msg => { NET.queue = NET.queue.then(() => onGuestData(msg)).catch(() => {}); });
+    conn.on('close', onHostGone);
+    conn.on('error', onHostGone);
     NET.waitTimer = setTimeout(() => {
-      if (!NET.open) netStatus('Non riesco a collegarmi. Controllate il codice, oppure provate entrambi col Wi-Fi: su alcune reti mobili il collegamento diretto non passa.', 'err');
+      if (!NET.open) netStatus('Non riesco a collegarmi. Controllate il codice, oppure provate col Wi-Fi: su alcune reti mobili il collegamento diretto non passa.', 'err');
     }, 15000);
   });
   peer.on('error', err => netStatus(netErrText(err), 'err'));
 }
 
-function attachConn(conn) {
-  NET.conn = conn;
-  conn.on('open', () => {
-    NET.open = true;
-    clearTimeout(NET.waitTimer);
-    netStatus('Collegati! Si comincia…', 'ok');
-    netSend({ t: 'hello', name: myName(), char: myChar() });
-  });
-  conn.on('data', msg => { NET.queue = NET.queue.then(() => onNet(msg)).catch(() => {}); });
-  conn.on('close', onPeerGone);
-  conn.on('error', onPeerGone);
+async function onGuestData(msg) {
+  if (!msg || typeof msg !== 'object') return;
+  switch (msg.t) {
+    case 'lobby':
+      NET.lobby = Array.isArray(msg.players) ? msg.players.slice(0, MAX_ONLINE) : [];
+      renderLobby(msg.host);
+      break;
+    case 'full': netStatus('La stanza è piena (massimo 4 giocatori).', 'err'); break;
+    case 'busy': netStatus('In questa stanza c\'è una partita in corso: aspettate la fine e riprova.', 'err'); break;
+    case 'start':
+      startOnline(msg.rules, msg.names, msg.me, Array.isArray(msg.chars) ? msg.chars : []);
+      break;
+    case 'left':
+      playerLeft(msg.idx, msg.name);
+      break;
+    case 'bye':
+      onHostGone();
+      break;
+    default:
+      if (RELAY.has(msg.t)) await applyAction(msg);
+  }
 }
 
-function netStartGame() {
-  const rules = segValue('segOnRules');
-  const names = [myName(), NET.oppName || 'Amico'];
-  const chars = [myChar(), NET.oppChar];
-  if (names[0] === names[1]) names[1] += ' 2';
-  netSend({ t: 'start', rules, names, chars });
-  startOnline(rules, names, 0, chars);
-}
+/* ── Le mosse ── */
 
 function startOnline(rules, names, me, chars = []) {
   $('#endOverlay').hidden = true;
   newGame({ mode: 'online', rainbow: rules === 'rainbow', battle: rules === 'battle', names, me, chars });
 }
 
-function netRematch() {
-  if (NET.role === 'host') return netStartGame();
-  netSend({ t: 'again' });
-  $('#btnAgain').disabled = true;
-  $('#endNote').textContent = `Hai chiesto la rivincita a ${NET.oppName}…`;
-}
-
 function snapshot() {
-  return {
-    players: G.players.map(q => ({ scores: q.scores, extra: q.extra, hp: q.hp })),
-    cur: G.cur, round: G.round,
-  };
+  return { players: G.players.map(q => ({ scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out })), cur: G.cur, round: G.round };
 }
 
-async function onNet(msg) {
-  if (!msg || typeof msg !== 'object') return;
+async function applyAction(msg) {
+  if (!G?.online || G.online.gone) return;
   switch (msg.t) {
-    case 'hello':
-      NET.oppName = String(msg.name || 'Amico').slice(0, 14);
-      NET.oppChar = typeof msg.char === 'string' ? msg.char : null;
-      if (NET.role === 'host') netStartGame();
-      else netStatus(`Collegato con ${NET.oppName}! Aspetto che inizi la partita…`, 'ok');
-      break;
-    case 'full':
-      netStatus('Questa stanza è già piena.', 'err');
-      break;
-    case 'start':
-      startOnline(msg.rules, msg.names, 1, Array.isArray(msg.chars) ? msg.chars : []);
-      break;
-    case 'again':
-      if (NET.role === 'host') {
-        $('#endNote').textContent = `${NET.oppName} vuole la rivincita!`;
-        $('#btnAgain').classList.add('primary');
-      }
-      break;
     case 'roll':
-      if (!G?.online) return;
       G.held = msg.held;
       await doRoll({ dice: msg.dice, colors: msg.colors });
       break;
     case 'hold':
-      if (!G?.online) return;
       G.held = msg.held;
       Sound.click();
       render();
       break;
     case 'sel':
-      if (!G?.online) return;
       G.sel = msg.id;
       Sound.click();
       render();
       break;
     case 'commit':
-      if (!G?.online) return;
       commit(msg.id);
       break;
     case 'snap':
       // riallineo punteggi e turno, nel caso qualcosa si fosse perso
-      if (!G?.online || !msg.s) return;
-      msg.s.players.forEach((q, i) => Object.assign(G.players[i], q));
+      if (!msg.s) return;
+      msg.s.players.forEach((q, i) => { if (G.players[i]) Object.assign(G.players[i], q); });
       if (G.cur !== msg.s.cur || G.round !== msg.s.round) { G.cur = msg.s.cur; G.round = msg.s.round; }
       render();
       break;
     case 'emote':
-      if (!G?.online) return;
-      say(`${NET.oppName}: ${String(msg.text || '').slice(0, 120)}`);
+      say(`${String(msg.name || 'Un amico').slice(0, 14)}: ${String(msg.text || '').slice(0, 120)}`);
       mood('smirk', 2200);
       haptic(20);
       break;
-    case 'bye':
-      onPeerGone();
-      break;
   }
 }
 
-function onPeerGone() {
-  if (!NET.conn) return;
-  const name = NET.oppName || 'Il tuo amico';
-  const inGame = $('#game').classList.contains('active') && G?.online;
-  NET.open = false;
-  NET.conn = null;
-  if (inGame) {
+function netRematch() {
+  if (NET.role === 'host') return netStartGame();
+  netSend({ t: 'again' });
+  $('#btnAgain').disabled = true;
+  $('#endNote').textContent = 'Hai chiesto la rivincita: aspetta chi ha creato la stanza…';
+}
+
+/* ── Chi se ne va ── */
+
+// Un giocatore lascia la partita: gli altri continuano, saltando i suoi turni
+function playerLeft(idx, name) {
+  if (!G?.online || !G.players[idx] || G.players[idx].out) return;
+  G.players[idx].out = true;
+  say(`${name || G.players[idx].name} si è scollegato: si continua senza di lui.`);
+  if (alive().length < 2) {
     G.online.gone = true;
     busy = false;
     render();
-    $('#endTitle').textContent = 'Collegamento perso';
-    $('#endScores').innerHTML = '';
-    $('#endNote').textContent = `${name} si è scollegato. Potete creare una nuova stanza quando volete.`;
-    $('#btnNext').hidden = true;
-    $('#btnAgain').hidden = true;
-    $('#btnEndMenu').textContent = 'Menù';
-    $('#endOverlay').hidden = false;
-  } else {
-    netStatus(`${name} si è scollegato.`, 'err');
+    return showGone(`${name || 'Gli altri giocatori'} si è scollegato e sei rimasto da solo.`);
+  }
+  if (G.cur === idx && !G.online.over) {
+    busy = false;
+    G.sel = null;
+    nextTurn();
+    if (G.round > G.rounds) { render(); return endGame(); }
+    startTurn();
+  } else render();
+}
+
+function onGuestGone(g) {
+  if (!NET.guests.includes(g)) return;
+  NET.guests = NET.guests.filter(x => x !== g);
+  if (gameRunning()) {
+    const idx = NET.active.indexOf(g) + 1;
+    if (idx > 0) {
+      netSend({ t: 'left', idx, name: g.name });
+      playerLeft(idx, g.name);
+    }
+  } else if (NET.role === 'host') {
+    if (g.name) netStatus(`${g.name} è uscito dalla stanza.`, 'err');
+    broadcastLobby();
   }
 }
 
+function onHostGone() {
+  if (!NET.host) return;
+  NET.open = false;
+  NET.host = null;
+  const name = NET.lobby[0]?.name || 'Chi ha creato la stanza';
+  if (G?.online && $('#game').classList.contains('active') && !G.online.gone) {
+    G.online.gone = true;
+    busy = false;
+    render();
+    showGone(`${name} (che ha creato la stanza) si è scollegato. Potete crearne una nuova quando volete.`);
+  } else {
+    netStatus(`${name} ha chiuso la stanza.`, 'err');
+    $('#lobbyBox').hidden = true;
+  }
+}
+
+function showGone(note) {
+  $('#endTitle').textContent = 'Collegamento perso';
+  $('#endScores').innerHTML = '';
+  $('#endNote').textContent = note;
+  $('#btnNext').hidden = true;
+  $('#btnAgain').hidden = true;
+  $('#btnEndMenu').textContent = 'Menù';
+  $('#endOverlay').hidden = false;
+}
+
+/* ── Battute e condivisione ── */
+
 function sendEmote(text) {
-  if (!G?.online || !NET.open) return;
-  netSend({ t: 'emote', text });
-  const [main] = text.split('|');
-  say(`Tu: ${main}`);
+  if (!G?.online || G.online.gone) return;
+  netSend({ t: 'emote', text, name: G.players[G.online.me].name });
+  say(`Tu: ${text.split('|')[0]}`);
   haptic(10);
 }
 
@@ -1635,12 +1768,12 @@ function buildEmotes() {
 
 async function shareRoom() {
   const url = roomLink(NET.code);
-  const text = `Sfidami a Yatzy con Tziu Gonario! Codice stanza: ${NET.code}`;
+  const text = `Sfidami a Yatzy con Tziu Gonario! Codice stanza: ${NET.code} (fino a 4 giocatori)`;
   try {
     if (navigator.share) { await navigator.share({ title: 'Yatzy', text, url }); return; }
   } catch { return; }
-  try { await navigator.clipboard.writeText(`${text} ${url}`); netStatus('Link copiato: incollalo su WhatsApp al tuo amico.', 'ok'); }
-  catch { netStatus(`Manda questo link al tuo amico: ${url}`, 'ok'); }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); netStatus('Link copiato: incollalo su WhatsApp ai tuoi amici.', 'ok'); }
+  catch { netStatus(`Manda questo link ai tuoi amici: ${url}`, 'ok'); }
 }
 
 function initOnline() {
@@ -1649,6 +1782,7 @@ function initOnline() {
   buildEmotes();
   $('#btnOnline').addEventListener('click', () => show('online'));
   $('#btnHost').addEventListener('click', hostRoom);
+  $('#btnStartOnline').addEventListener('click', netStartGame);
   $('#btnJoin').addEventListener('click', () => joinRoom($('#joinCode').value));
   $('#joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom($('#joinCode').value); });
   $('#btnShare').addEventListener('click', shareRoom);
