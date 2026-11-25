@@ -620,6 +620,35 @@ tr:has(.cell.pickable) .lbl { cursor: pointer; }
 }
 .emote:active { transform: scale(.94); background: rgba(240, 166, 64, .25); }
 
+/* ── Profilo ── */
+.profile-btn {
+  display: inline-flex; align-items: center; gap: 8px; margin: -14px auto 22px;
+  padding: 6px 14px 6px 6px; border-radius: 99px; border: 1px solid var(--line);
+  background: rgba(0, 0, 0, .22); color: var(--ivory); font-size: 14px; font-weight: 600;
+}
+.profile-btn .chip-ava { width: 32px; height: 32px; margin: 0; }
+.profile-btn em { font-style: normal; font-size: 12px; color: var(--amber-l); margin-left: 4px; }
+.profile-btn:only-child span, .profile-btn > span:only-child { padding-left: 8px; }
+.prof-head { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; }
+.prof-head .bubble { flex: 1; font-size: 16px; }
+.pchar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+.pchar {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 10px;
+  border-radius: 16px; border: 1.5px solid var(--line); background: rgba(0, 0, 0, .2); color: var(--ivory);
+  transition: transform .15s, border-color .2s, background .2s;
+}
+.pchar-img { width: 100%; aspect-ratio: 3 / 4; display: block; }
+.pchar-img .ava { width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .4)); }
+.pchar b { font-size: 13px; margin-top: 4px; }
+.pchar small { font-size: 12px; color: var(--muted); line-height: 1.25; text-align: center; }
+.pchar:hover { transform: translateY(-2px); }
+.pchar.on { border-color: var(--amber); background: linear-gradient(180deg, rgba(240, 166, 64, .22), rgba(240, 166, 64, .05)); box-shadow: 0 0 0 3px rgba(240, 166, 64, .2); }
+.pchar.on b { color: var(--amber-l); }
+.pchar.cheer .pchar-img, .chip-ava.cheer { animation: charHop .55s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes charHop { 30% { transform: translateY(-10px) scale(1.08, .94); } 60% { transform: translateY(0) scale(.96, 1.05); } }
+.chip-ava.cheer { animation-iteration-count: 3; }
+@media (min-width: 900px) { .panel.profile { max-width: 640px; } }
+
 /* ── Fine partita ── */
 .overlay {
   position: fixed; inset: 0; z-index: 10;

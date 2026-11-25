@@ -497,6 +497,20 @@ function idleReset() {
   }, 16000);
 }
 
+/* ───────────── Il tuo personaggio ───────────── */
+
+const PLAYER_CHARS = [
+  { id: 'pastoreddu', name: 'Su Pastoreddu',  desc: 'Giovane pastore con il suo cane fedele.' },
+  { id: 'tenore',     name: 'Su Tenore',      desc: 'Canta a tenore, con la mano all\'orecchio.' },
+  { id: 'launeddas',  name: 'Su Sonadore',    desc: 'Suona le launeddas a guance gonfie.' },
+  { id: 'boe',        name: 'Su Boe',         desc: 'La maschera con le corna e i campanacci.' },
+  { id: 'jana',       name: 'Sa Jana',        desc: 'La piccola fata delle domus de janas.' },
+  { id: 'piscadore',  name: 'Su Piscadore',   desc: 'Pescatore della laguna di Cabras.' },
+];
+const charSrc = id => (PLAYER_CHARS.some(c => c.id === id) ? `img/giocatori/${id}.webp` : null);
+const myChar = () => localStorage.getItem('cd.char');
+const profileName = () => localStorage.getItem('cd.name') || '';
+
 /* ───────────── Stato ───────────── */
 
 const $ = s => document.querySelector(s);
@@ -523,17 +537,21 @@ function newGame(setup) {
   }
   lastSetup = setup;
   const mk = (name, cpu = false) => ({ name, cpu, scores: {}, extra: 0, rainbow: !!setup.rainbow, battle: !!setup.battle, hp: MAX_HP });
-  const players = [mk(setup.name1 || (setup.mode === 'duo' ? 'Giocatore 1' : 'Tu'))];
+  const players = [mk(setup.name1 || (setup.mode === 'duo' ? 'Giocatore 1' : profileName() || 'Tu'))];
   let level = setup.level, maxRolls = 3, adv = null;
   if (setup.mode === 'cpu') players.push(mk('Tziu Gonario', true));
   if (setup.mode === 'duo') players.push(mk(setup.name2 || 'Giocatore 2'));
   if (setup.mode === 'online') players.splice(0, players.length, mk(setup.names[0]), mk(setup.names[1]));
+  // ritratti: il tuo personaggio (e online quello dell'amico)
+  if (setup.mode === 'online') players.forEach((q, i) => { q.ava = charSrc(setup.chars?.[i]); });
+  else if (setup.mode !== 'duo') players[0].ava = charSrc(myChar());
   if (setup.mode === 'adv') {
     const st = STAGES[setup.stage];
     if (st.foe) {
       const foe = mk(st.foe.name, true);
       foe.icon = st.foe.icon;
       foe.img = st.foe.img;
+      foe.ava = rivalSrc(st.foe.img);
       foe.style = st.foe.style;
       foe.lines = st.foe.lines;
       foe.extra = st.foe.head || 0;
@@ -807,6 +825,7 @@ function commit(id) {
   else if (!msg && isMe(p) && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) { msg = sline('teaseWaste', 'bad', 0.35); mood('smirk', 2600); }
   else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc >= 25 && Math.random() < 0.6) { msg = sline('gloat', 'gloat', 0.5); mood('happy'); }
   else if (!msg && p.cpu && p.lines && sc >= 25 && Math.random() < 0.6) { msg = `${p.name}: «${pick(p.lines)}»`; mood('sad'); }
+  if (isMe(p) && sc >= 25) cheerChip(G.cur);
   if (isMe(p) && (sc >= 30 || (!hadBonus && bonusOf(p) > 0))) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
   let ko = false;
@@ -923,7 +942,7 @@ function endGame() {
 
   $('#endTitle').textContent = title;
   $('#endScores').innerHTML = starsHtml + ps.map((p, i) =>
-    `<div class="end-row ${totals[i] === top ? 'win' : ''}"><span>${esc(p.name)}</span><b>${totals[i]}${G.battle ? ' <small>PV</small>' : ''}</b></div>`).join('');
+    `<div class="end-row ${totals[i] === top ? 'win' : ''}"><span>${p.ava ? `<i class="chip-ava">${avatarHTML(p.ava)}</i>` : ''}${esc(p.name)}</span><b>${totals[i]}${G.battle ? ' <small>PV</small>' : ''}</b></div>`).join('');
   $('#endNote').textContent = note;
   Sound.fanfare();
   const won = G.adv ? title === 'Missione compiuta!' : !ps[totals.indexOf(top)].cpu;
@@ -937,7 +956,8 @@ let briefStage = 0;
 function renderMap() {
   const a = loadAdv();
   const total = STAGES.reduce((n, s) => n + (a.stars[s.id] || 0), 0);
-  $('#mapStars').textContent = `★ ${total} / ${STAGES.length * 3}`;
+  const me = charSrc(myChar());
+  $('#mapStars').innerHTML = `${me ? `<i class="chip-ava">${avatarHTML(me)}</i>` : ''}★ ${total} / ${STAGES.length * 3}`;
   $('#mapList').innerHTML = STAGES.map((s, i) => {
     const open = stageUnlocked(a, i), st = a.stars[s.id] || 0;
     return `<button class="stage ${open ? '' : 'locked'} ${st ? 'done' : ''}" data-i="${i}" ${open ? '' : 'disabled'}>
@@ -1001,13 +1021,20 @@ function setDie(el, v, spin = false) {
     `rotateZ(${360 * (el._nz || 0)}deg) rotateX(${ax + 360 * (el._nx || 0)}deg) rotateY(${ay + 360 * (el._ny || 0)}deg)`;
 }
 
-const haptic = pattern => { try { navigator.vibrate?.(pattern); } catch {} };
+const haptic = pattern => { try { if (navigator.userActivation?.hasBeenActive !== false) navigator.vibrate?.(pattern); } catch {} };
 
 // Numeri che salgono invece di cambiare di colpo
 const rivalSrc = img => `img/rivali/${img}.webp`;
 const avatarHTML = (src, alt = '') => `<img class="ava" src="${src}" alt="${alt}" draggable="false">`;
 
 const shownTotal = q => (G?.battle ? q.hp : totalOf(q));
+
+// Il tuo personaggio esulta accanto al nome
+function cheerChip(j) {
+  const ava = document.querySelector(`#players .chip[data-p="${j}"] .chip-ava`);
+  if (!ava) return;
+  ava.classList.remove('cheer'); void ava.offsetWidth; ava.classList.add('cheer');
+}
 
 function battleFx(j, text, kind) {
   const chip = document.querySelector(`#players .chip[data-p="${j}"]`);
@@ -1144,7 +1171,7 @@ function buildSheet() {
   const row = c => `<tr data-id="${c.id}"><td class="lbl"><span>${c.label}</span><small>${c.hint}</small></td>${G.players.map((_, j) => `<td class="cell" data-p="${j}"></td>`).join('')}</tr>`;
   const sumRow = (cls, label) => `<tr class="sum ${cls}"><td class="lbl"><span>${label}</span></td>${G.players.map((_, j) => `<td data-p="${j}"></td>`).join('')}</tr>`;
   $('#players').innerHTML = G.players.map((q, j) =>
-    `<div class="chip${G.battle ? ' battle' : ''}" data-p="${j}"><span>${q.img ? `<i class="chip-ava">${avatarHTML(rivalSrc(q.img))}</i>` : q.icon ? q.icon + ' ' : ''}${esc(q.name)}</span><b data-val="${shownTotal(q)}">${shownTotal(q)}</b>${G.battle ? '<div class="hp"><i></i></div>' : ''}</div>`).join('');
+    `<div class="chip${G.battle ? ' battle' : ''}" data-p="${j}"><span>${q.ava ? `<i class="chip-ava">${avatarHTML(q.ava)}</i>` : q.icon ? q.icon + ' ' : ''}${esc(q.name)}</span><b data-val="${shownTotal(q)}">${shownTotal(q)}</b>${G.battle ? '<div class="hp"><i></i></div>' : ''}</div>`).join('');
   buildBoard();
   $('#sheet').className = 'sheet' + (two ? ' two' : '');
   $('#sheet').innerHTML = head + '<tbody>' +
@@ -1465,7 +1492,7 @@ function attachConn(conn) {
     NET.open = true;
     clearTimeout(NET.waitTimer);
     netStatus('Collegati! Si comincia…', 'ok');
-    netSend({ t: 'hello', name: myName() });
+    netSend({ t: 'hello', name: myName(), char: myChar() });
   });
   conn.on('data', msg => { NET.queue = NET.queue.then(() => onNet(msg)).catch(() => {}); });
   conn.on('close', onPeerGone);
@@ -1475,14 +1502,15 @@ function attachConn(conn) {
 function netStartGame() {
   const rules = segValue('segOnRules');
   const names = [myName(), NET.oppName || 'Amico'];
+  const chars = [myChar(), NET.oppChar];
   if (names[0] === names[1]) names[1] += ' 2';
-  netSend({ t: 'start', rules, names });
-  startOnline(rules, names, 0);
+  netSend({ t: 'start', rules, names, chars });
+  startOnline(rules, names, 0, chars);
 }
 
-function startOnline(rules, names, me) {
+function startOnline(rules, names, me, chars = []) {
   $('#endOverlay').hidden = true;
-  newGame({ mode: 'online', rainbow: rules === 'rainbow', battle: rules === 'battle', names, me });
+  newGame({ mode: 'online', rainbow: rules === 'rainbow', battle: rules === 'battle', names, me, chars });
 }
 
 function netRematch() {
@@ -1504,6 +1532,7 @@ async function onNet(msg) {
   switch (msg.t) {
     case 'hello':
       NET.oppName = String(msg.name || 'Amico').slice(0, 14);
+      NET.oppChar = typeof msg.char === 'string' ? msg.char : null;
       if (NET.role === 'host') netStartGame();
       else netStatus(`Collegato con ${NET.oppName}! Aspetto che inizi la partita…`, 'ok');
       break;
@@ -1511,7 +1540,7 @@ async function onNet(msg) {
       netStatus('Questa stanza è già piena.', 'err');
       break;
     case 'start':
-      startOnline(msg.rules, msg.names, 1);
+      startOnline(msg.rules, msg.names, 1, Array.isArray(msg.chars) ? msg.chars : []);
       break;
     case 'again':
       if (NET.role === 'host') {
@@ -1623,13 +1652,55 @@ function initOnline() {
   }
 }
 
+/* ───────────── Profilo: nome e personaggio ───────────── */
+
+let pickedChar = null;
+function openProfile(first = false) {
+  pickedChar = myChar() || null;
+  $('#profName').value = profileName();
+  $('#profTitle').textContent = first ? 'Benvenuto! Chi sei?' : 'Il tuo personaggio';
+  $('#profBack').hidden = first;
+  $('#profGrid').innerHTML = PLAYER_CHARS.map(c => `
+    <button class="pchar ${c.id === pickedChar ? 'on' : ''}" data-id="${c.id}">
+      <span class="pchar-img">${avatarHTML(charSrc(c.id), c.name)}</span>
+      <b>${c.name}</b><small>${c.desc}</small>
+    </button>`).join('');
+  refreshProfileBtn();
+  show('profile');
+  say(first ? 'Ajò! Prima di cominciare: dimmi come ti chiami e scegli chi vuoi essere.' : 'Cambia pure, bellu meu. Anche il pastore cambia pascolo.', '#profSay');
+}
+
+function refreshProfileBtn() {
+  const ok = !!pickedChar && $('#profName').value.trim().length > 0;
+  $('#profOk').disabled = !ok;
+  $('#profOk').textContent = ok ? `Gioca come ${PLAYER_CHARS.find(c => c.id === pickedChar).name}` : 'Scrivi il nome e scegli un personaggio';
+}
+
+function saveProfile() {
+  const name = $('#profName').value.trim().slice(0, 14);
+  if (!name || !pickedChar) return;
+  localStorage.setItem('cd.name', name);
+  localStorage.setItem('cd.char', pickedChar);
+  $('#name1').value = name;
+  $('#onName').value = name;
+  Sound.score(true);
+  show('menu');
+}
+
+function refreshMenuProfile() {
+  const src = charSrc(myChar());
+  $('#btnProfile').innerHTML = src
+    ? `<i class="chip-ava">${avatarHTML(src)}</i><span>${esc(profileName() || 'Tu')} · ${PLAYER_CHARS.find(c => c.id === myChar()).name}</span><em>cambia</em>`
+    : '<span>Scegli il tuo personaggio</span>';
+}
+
 /* ───────────── Schermate e controlli ───────────── */
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
   $('#endOverlay').hidden = true;
   $('#facePick').hidden = true;
-  if (id === 'menu') refreshMenu();
+  if (id === 'menu') { refreshMenu(); refreshMenuProfile(); }
   if (id === 'map') renderMap();
   if (id === 'menu' && NET.peer) netLeave();
 }
@@ -1753,6 +1824,21 @@ function init() {
   });
 
   initOnline();
+  $('#btnProfile').addEventListener('click', () => openProfile(false));
+  $('#profBack').addEventListener('click', () => show('menu'));
+  $('#profGrid').addEventListener('click', e => {
+    const b = e.target.closest('.pchar'); if (!b) return;
+    pickedChar = b.dataset.id;
+    document.querySelectorAll('#profGrid .pchar').forEach(x => x.classList.toggle('on', x === b));
+    b.classList.remove('cheer'); void b.offsetWidth; b.classList.add('cheer');
+    Sound.click(); haptic(10);
+    refreshProfileBtn();
+  });
+  $('#profName').addEventListener('input', refreshProfileBtn);
+  $('#profOk').addEventListener('click', saveProfile);
+  refreshMenuProfile();
+  // alla prima apertura: nome e personaggio (ma non se si arriva da un invito)
+  if (!myChar() && !new URLSearchParams(location.search).get('stanza')) setTimeout(() => openProfile(true), 50);
   $('#btnRoll').addEventListener('click', humanRoll);
   $('#board').addEventListener('click', e => { const t = e.target.closest('.tile'); if (t && !t.disabled) choose(t.dataset.id); });
   $('#btnSheet').addEventListener('click', () => {

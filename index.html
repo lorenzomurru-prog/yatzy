@@ -24,6 +24,7 @@
     <p class="bubble menu-bubble" id="menuSay" hidden></p>
     <h1 class="title">Yatzy</h1>
     <p class="subtitle">con Tziu Gonario</p>
+    <button class="profile-btn" id="btnProfile"></button>
     <nav class="menu-buttons">
       <button class="btn primary" id="btnContinue" hidden>Continua la partita</button>
       <button class="btn primary" id="btnClassic">Partita classica</button>
@@ -69,6 +70,23 @@
     <input id="name1" class="input" maxlength="14" placeholder="Il tuo nome" autocomplete="off">
     <input id="name2" class="input" maxlength="14" placeholder="Secondo giocatore" autocomplete="off" hidden>
     <button class="btn primary wide" id="btnStart">Inizia</button>
+  </div>
+</section>
+
+<!-- PROFILO -->
+<section id="profile" class="screen">
+  <div class="panel profile">
+    <button class="link" id="profBack">‹ Indietro</button>
+    <div class="prof-head">
+      <div class="portrait small" data-mentor></div>
+      <p class="bubble" id="profSay"></p>
+    </div>
+    <h2 id="profTitle">Il tuo personaggio</h2>
+    <p class="label">Il tuo nome</p>
+    <input id="profName" class="input" maxlength="14" placeholder="Come ti chiami?" autocomplete="off">
+    <p class="label">Chi vuoi essere?</p>
+    <div class="pchar-grid" id="profGrid"></div>
+    <button class="btn primary wide" id="profOk" disabled>Scegli un personaggio</button>
   </div>
 </section>
 
