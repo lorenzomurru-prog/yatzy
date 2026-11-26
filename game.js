@@ -1614,7 +1614,8 @@ function buildBoard() {
     const dk = G.drink && DRINK_OF[id] && DRINKS[DRINK_OF[id]];
     if (!dk) return '';
     const n = ['cinq', 'mono'].includes(id) ? 2 : 1;
-    return `<span class="t-drink" style="--dc:${dk.color}" title="${dk.name}${id === 'chance' ? ' (da 25 punti)' : ''}">${dk.emoji.repeat(n)} ${dk.short || dk.name}</span>`;
+    const h = dk.color.slice(1), lum = (parseInt(h.slice(0, 2), 16) * 299 + parseInt(h.slice(2, 4), 16) * 587 + parseInt(h.slice(4, 6), 16) * 114) / 1000;
+    return `<span class="t-liquid${lum > 150 ? ' light' : ''}" style="--dc:${dk.color}" title="${dk.name}${id === 'chance' ? ' (da 25 punti)' : ''}"><i></i><em>${dk.short || dk.name}${n > 1 ? ' ×2' : ''}</em></span>`;
   };
   const tile = (id, inner, cls = '') => `<button class="tile ${cls}" data-id="${id}" aria-label="${CAT[id].label}">${drinkTag(id)}<span class="t-top">${inner}</span><span class="t-val"></span><i class="t-check" aria-hidden="true">✓</i></button>`;
   $('#board').classList.toggle('battle', !!G.battle);

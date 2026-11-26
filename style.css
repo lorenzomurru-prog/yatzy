@@ -977,15 +977,30 @@ body.tavern #game .game-grid::after {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
-/* Bevuta: il drink di ogni casella, visibile da subito */
-#board.drink .tile:not(.up) { padding-top: 22px; min-height: 84px; }
-.t-drink {
-  position: absolute; top: 0; left: 0; right: 0; height: 17px;
-  display: flex; align-items: center; justify-content: center; gap: 2px;
-  font: 650 11px/1 var(--font-ui); color: var(--ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  background: color-mix(in srgb, var(--dc) 42%, rgba(0, 0, 0, .35));
-  border-bottom: 1px solid color-mix(in srgb, var(--dc) 60%, transparent);
-  padding: 0 4px; pointer-events: none;
+/* Bevuta: ogni casella è un bicchiere pieno del suo drink */
+#board.drink .tile:not(.up) { padding-bottom: 20px; min-height: 86px; }
+#board.drink .tile:not(.up) > :not(.t-liquid) { position: relative; z-index: 1; }
+.t-liquid { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.t-liquid i {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 40%;
+  background: color-mix(in srgb, var(--dc) 62%, #3c1619);
+  transition: height .9s cubic-bezier(.5, 0, .3, 1);
 }
-.tile.wide .t-drink { font-size: 12px; }
-.tile.done .t-drink { opacity: .45; }
+.t-liquid i::before {
+  content: ""; position: absolute; left: -12%; right: -12%; top: -6px; height: 12px; border-radius: 50%;
+  background: color-mix(in srgb, var(--dc) 75%, #3c1619);
+  animation: slosh 3.2s ease-in-out infinite;
+}
+@keyframes slosh { 50% { transform: translateX(6%) scaleY(.7); } }
+.t-liquid em {
+  position: absolute; left: 4px; right: 4px; bottom: 4px; text-align: center;
+  font: 650 11px/1.1 var(--font-ui); font-style: normal; color: #fff6e6;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 1px rgba(0, 0, 0, .45);
+}
+.t-liquid.light em { color: #3a2410; text-shadow: none; }
+.tile.wide .t-liquid em { font-size: 12px; }
+.tile.done .t-liquid i { height: 9%; }
+.tile.done .t-liquid i::before { animation: none; }
+.tile.done .t-liquid em { color: var(--muted); text-shadow: none; }
+.tile.wide .t-liquid i { height: 30%; }
+.tile.wide.done .t-liquid i { height: 9%; }
