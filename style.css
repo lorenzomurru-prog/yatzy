@@ -540,7 +540,7 @@ tr:has(.cell.pickable) .lbl { cursor: pointer; }
 .g-wrap {
   position: absolute; inset: 0; transform-origin: 50% 100%;
   transform: rotate(var(--lean, 0deg));
-  animation: breathe 3.4s ease-in-out infinite;
+  animation: tipsy 4.2s ease-in-out infinite;
   transition: transform .5s ease-out;
 }
 .g-wrap img {
@@ -718,6 +718,20 @@ body.big .screen { zoom: 1.12; }
 @keyframes coachPulse { 50% { box-shadow: 0 0 0 4px var(--amber), 0 0 26px rgba(240, 166, 64, .8); } }
 #btnLearn2 { margin: 0 0 12px; }
 body.tut #game.screen { padding-bottom: 240px; }
+
+/* Tziu Gonario brillo: ondeggia e singhiozza */
+@keyframes tipsy {
+  0%, 100% { transform: rotate(calc(var(--lean, 0deg) - 2.5deg)) translateX(-1%); }
+  50% { transform: rotate(calc(var(--lean, 0deg) + 3deg)) translateX(1.5%) scale(1.01, .99); }
+}
+.portrait.hic .g-wrap { animation: hicJump .45s cubic-bezier(.3, 1.8, .5, 1), tipsy 4.2s ease-in-out .45s infinite; }
+@keyframes hicJump { 35% { transform: translateY(-5%) scale(.98, 1.04); } 70% { transform: translateY(1%); } }
+.hic-pop {
+  position: fixed; z-index: 22; pointer-events: none; transform: translate(-50%, -50%);
+  font: italic 800 16px var(--font-title); color: var(--amber-l); text-shadow: 0 2px 4px rgba(0, 0, 0, .6);
+  animation: hicUp 1.3s ease-out forwards;
+}
+@keyframes hicUp { 0% { opacity: 0; transform: translate(-50%, -20%) scale(.6); } 20% { opacity: 1; transform: translate(-30%, -90%) scale(1.1) rotate(-8deg); } 100% { opacity: 0; transform: translate(10%, -260%) rotate(10deg); } }
 
 /* ── Fine partita ── */
 .overlay {

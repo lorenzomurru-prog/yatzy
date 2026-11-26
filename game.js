@@ -14,7 +14,7 @@ const CATS = [
   { id: 'full',   label: 'Full',        hint: 'Tre più due · 25' },
   { id: 'small',  label: 'Scala corta', hint: 'Quattro in fila · 30' },
   { id: 'large',  label: 'Scala lunga', hint: 'Cinque in fila · 40' },
-  { id: 'cinq',   label: 'Cinquina',    hint: 'Cinque uguali · 50' },
+  { id: 'cinq',   label: 'Yatzy',       hint: 'Cinque uguali · 50' },
   { id: 'chance', label: 'Chance',      hint: 'Somma dei dadi' },
 ];
 // Variante Arcobaleno: ogni dado ha anche un colore (rubino, smeraldo, zaffiro)
@@ -403,7 +403,7 @@ const LINES = {
   yourTurnTu: ['Tocca a te. Il vento è a favore!', 'A te i dadi: tre lanci, come tre giorni di sole per far maturare un frutto.', 'Il tuo turno. Semina bene!'],
   myTurn: ['Ora tocca a me. Ascolto il maestrale…', 'Tocca a me. Le mie pecore sanno che qui si fa sul serio.', 'Mescolo i dadi come la terra prima della semina.', 'Silenzio… anche il gufo aspetta il momento giusto.'],
   foeTurn: ['Tocca a {n}. Osserviamo, come l\'airone che aspetta il pesce.', '{n} lancia: vediamo che vento tira.', 'Ora {n}. Pazienza: la quercia non cresce in un giorno.'],
-  cinq: ['Per mille querce! Cinque petali uguali sullo stesso fiore!', 'Cinque uguali! Come uno stormo che vola tutto insieme!', 'Una cinquina! Più rara di un quadrifoglio… anzi, di un cinquefoglio!'],
+  cinq: ['Per mille querce! Cinque petali uguali sullo stesso fiore!', 'Cinque uguali! Come uno stormo che vola tutto insieme!', 'Yatzy! Più raro di un quadrifoglio… anzi, di un cinquefoglio!'],
   large: ['Scala lunga! Ordinata come i cerchi di un vecchio tronco.', 'Cinque in fila, come gli anatroccoli dietro alla mamma!'],
   small: ['Scala corta: quattro sassi per attraversare il ruscello.', 'Quattro in fila: il sentiero nel bosco è tracciato.'],
   full: ['Un full! Tre alberi e due cespugli: un bosco in armonia.', 'Full! Come un nido: tre uova e due piume.'],
@@ -417,7 +417,7 @@ const LINES = {
   healFull: ['Già in piena salute: l\'acqua in un vaso pieno trabocca e basta.'],
   ko: ['{n} è a terra! Anche la quercia più grande cade, se il vento soffia forte.', '{n} è senza punti vita! La tempesta è passata.'],
   bonus: ['Bonus della parte alta: +35! Hai piantato bene, e ora raccogli i frutti.'],
-  extra: ['Un\'altra cinquina: +100! Due arcobaleni nello stesso giorno!'],
+  extra: ['Un altro Yatzy: +100! Due arcobaleni nello stesso giorno!'],
   teaseBad: ['Che lancio… nemmeno una lumaca bendata avrebbe fatto peggio.', 'Questi dadi sembrano foglie secche: sparsi e senza un perché.', 'Hai seminato sassi, caro mio. Non aspettarti il grano.', 'Un lancio così l\'ho visto fare solo a un riccio con i guanti.', 'Mmm. Anche il cuculo, quando sbaglia nido, fa più bella figura.'],
   teaseNear: ['Ahia! Eri a un passo, come la volpe sotto l\'uva.', 'Quasi! Il pesce ha toccato l\'amo… e se n\'è andato ridendo.', 'Per un dado! Come il fiore che sboccia il giorno dopo la festa.', 'Così vicino! Il picchio ci prova cento volte, tu riprovaci.'],
   teaseZero: ['Uno zero? Hai il pollice verde di un cactus di plastica.', 'Zero tondo, come un sasso di fiume. Almeno è liscio.', 'Hai appena innaffiato il deserto. Coraggio!', 'Zero. Perfino il bruco ride, e non ha nemmeno la bocca grande.'],
@@ -427,7 +427,7 @@ const LINES = {
   wisdom: [
     'Il fiume non spinge l\'acqua: aspetta che scenda. Così si aspetta il dado giusto.',
     'La Chance è come l\'ombrello: meglio tenerla per i giorni di pioggia.',
-    'Chi insegue la cinquina a ogni costo è come chi aspetta la neve ad agosto.',
+    'Chi insegue lo Yatzy a ogni costo è come chi aspetta la neve ad agosto.',
     'I numeri alti sono come le mele in cima all\'albero: valgono di più, ma bisogna arrivarci.',
     'Sessantatré punti in alto, e il bonus fiorisce come un ciliegio a primavera.',
     'Un dado tenuto è un seme piantato; un dado rilanciato è un seme affidato al vento.',
@@ -436,13 +436,13 @@ const LINES = {
     'Le api non si fermano su un solo fiore. Non fissarti su una sola casella.',
     'La luna cambia ogni notte, eppure torna sempre piena. Così fa la fortuna.',
     'Il bambù cresce in silenzio per anni, poi tocca il cielo in un attimo. Pazienza!',
-    'Uno zero sulla cinquina è come prosciugare il pozzo: pensaci bene prima.',
+    'Uno zero sullo Yatzy è come prosciugare il pozzo: pensaci bene prima.',
     'Un full è un piccolo frutteto: tre meli e due peri.',
     'Le stagioni non hanno fretta, e nemmeno i dadi.',
     'Il seme più piccolo, nel terreno giusto, diventa la quercia più grande. Anche un tris di uno, a volte, salva la partita.',
     'Quando il vento cambia, il saggio sposta la vela: se i dadi non vengono, cambia casella.',
     'Ehi, mi fai il solletico alla barba! Lancia, che è meglio.',
-    'Il maestrale non chiede permesso: arriva e cambia tutto. Come una cinquina.',
+    'Il maestrale non chiede permesso: arriva e cambia tutto. Come uno Yatzy.',
     'Le pecore seguono il pastore, i dadi seguono la fortuna. Tu segui la testa.',
     'Il sughero cresce piano, ma regge il vino buono per cent\'anni. Pazienza!',
     'Il muretto a secco si fa pietra su pietra: così si riempie la parte alta.',
@@ -468,12 +468,21 @@ const SARDO = {
     'Tziu Gonario at bidu de totu, ma custu mai!|Tziu Gonario ne ha viste tante, ma questa mai!',
     'Ma ses tontu?!|Ma sei scemo?!',
     'Lassa istare, lassa…|Lascia stare, lascia…',
+    'Ses prus tostu de una pedra!|Sei più testardo di una pietra!',
+    'Abberu? Ma non bi creo!|Davvero? Non ci credo!',
+    'Custu dadu est malu che a su tiàulu!|Questo dado è cattivo come il diavolo!',
+    'Oh Deus, ite pena!|Oh Dio, che pena!',
+    'Ses unu bellu macu!|Sei proprio matto!',
+    'Gai no andat bene, no!|Così non va bene, no!',
   ],
+  cottu: ['Itte cazzu ses cottu??|Ma che c…, sei cotto??'],
   slow: [
     'Ajò, ca est tardu!|Dai, che è tardi!',
     'Ses prus lentu de una tostoine.|Sei più lento di una tartaruga.',
     'Ajò, chi su sole est artu!|Dai, che il sole è alto!',
     'Pàsia, pàsia…|Calma, calma…',
+    'Ajò, chi s\'ora est passende!|Dai, che il tempo passa!',
+    'Atzìccu atzìccu… ma non gai!|Piano piano… ma non così!',
   ],
   near: [
     'Eja, eja… comente no!|Sì, sì… come no!',
@@ -487,6 +496,27 @@ const SARDO = {
     'Ite cosa bella!|Che bella cosa!',
     'Bellu meu!|Bello mio!',
     'Eja! Custu est unu pastore!|Sì! Questo è un pastore!',
+    'Ses unu leone!|Sei un leone!',
+    'Ite fortuna, bellu meu!|Che fortuna, bello mio!',
+    'Su pastore bonu non perdet mai una berbeghe.|Il buon pastore non perde mai una pecora.',
+    'Bravu, ma sa fortuna est cega!|Bravo, ma la fortuna è cieca!',
+  ],
+  vino: [
+    'A sa salude!|Alla salute!',
+    'Salude e trigu!|Salute e grano!',
+    'Su binu nieddu m\'at fatu bìdere sos dados dòpios!|Il vino nero mi ha fatto vedere i dadi doppi!',
+    'Unu tzichiritu de binu e torro a giogare.|Un goccetto di vino e torno a giocare.',
+    'Custu binu est menzus de sos dados tuos!|Questo vino è meglio dei tuoi dadi!',
+    'Ti lo ghetto unu binu nieddu?|Te lo verso un vino nero?',
+    'Ma ti lo buffes unu binellu?|Ma te lo bevi un vinello?',
+  ],
+  birra: ['Birredda ne cherese?|Una birretta, ne vuoi?'],
+  ubriaco: [
+    'Ih cazzu, forse ho esagerato allo tzilleri…',
+    'Sa bagassa mea, apo buffadu meda oe!|Mannaggia, oggi ho bevuto parecchio!',
+    'Ih lampu, soe cottu che pippa!|Accidenti, sono cotto come una pipa!',
+    'Hic! Ma cantos dados bi sunt? Nde bido deghe!|Hic! Ma quanti dadi ci sono? Ne vedo dieci!',
+    'Su mundu girat… o est sa mesa?|Il mondo gira… o è il tavolo?',
   ],
   cinq: ['A chent\'annos!|Cent\'anni!'],
   gloat: [
@@ -507,6 +537,21 @@ function mood(m, ms = 2400) {
   document.querySelectorAll('[data-mentor]').forEach(el => { el.dataset.mood = m; setPose(el, m); });
   clearTimeout(moodTimer);
   if (ms) moodTimer = setTimeout(() => mood('', 0), ms);
+}
+
+// Tziu Gonario è sempre un po' brillo: ogni tanto gli scappa un singhiozzo
+function hiccup() {
+  const el = [...document.querySelectorAll('[data-mentor]')].find(x => x.offsetParent && !x.classList.contains('player') && !x.closest('#cameo'));
+  if (!el || reducedMotion) return;
+  el.classList.remove('hic'); void el.offsetWidth; el.classList.add('hic');
+  const r = el.getBoundingClientRect();
+  const d = document.createElement('div');
+  d.className = 'hic-pop';
+  d.textContent = 'hic!';
+  d.style.left = `${Math.round(r.left + r.width * 0.65)}px`;
+  d.style.top = `${Math.round(r.top + r.height * 0.15)}px`;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1300);
 }
 
 // Si sporge un po' verso il dito o il mouse
@@ -539,17 +584,27 @@ function pokeMentor(el) {
 
 // Se resti fermo un po', Tziu Gonario ti racconta qualcosa
 let idleTimer = null;
-function idleReset() {
+let idleTicks = 0;
+function idleReset(keepCount = false) {
   clearTimeout(idleTimer);
+  if (!keepCount) idleTicks = 0;
   idleTimer = setTimeout(() => {
+    idleTicks++;
     const inGame = $('#game').classList.contains('active');
     const inMenu = $('#menu').classList.contains('active');
     if (inGame && G && !busy && !curP().cpu) {
-      if (OPTS.tease && Math.random() < 0.45) { say(pick(SARDO.slow)); mood('smirk', 2000); }
+      if (idleTicks >= 3) {
+        // fermo da tanto: si addormenta (toccalo per svegliarlo)
+        cameo('Zzz… Tziu Gonario si è appisolato. Toccalo per svegliarlo!', 'cheer', true, 'g-sonno');
+      } else if (idleTicks === 2 && Math.random() < 0.6) {
+        say(SARDO.birra[0]);
+        cameo('Aaaaah, bella frisca!|Aaah, bella fresca!', 'cheer', true, 'g-birra');
+      } else if (OPTS.tease && Math.random() < 0.45) { say(pick(SARDO.slow)); mood('smirk', 2000); }
+      else if (Math.random() < 0.5) { say(pick(Math.random() < 0.5 ? SARDO.ubriaco : SARDO.vino)); mood('happy', 1500); hiccup(); }
       else { say(line('wisdom')); mood('think', 1500); }
     }
     else if (inMenu) say(line('wisdom'), '#menuSay');
-    idleReset();
+    idleReset(true);
   }, 16000);
 }
 
@@ -616,6 +671,7 @@ function newGame(setup) {
   // ritratti: il tuo personaggio (e online quello dell'amico)
   const charIds = setup.mode === 'online' || setup.mode === 'duo' ? (setup.chars || []) : [myChar()];
   charIds.forEach((c, i) => { if (players[i] && charSrc(c)) { players[i].ava = charSrc(c); players[i].charId = c; } });
+  loadGonarioClips();
   // clip di festa dei personaggi in gioco (e del Mammuthones nella sfida finale)
   players.forEach(q => { if (q.charId) loadClip(`char:${q.charId}`, `img/clip/${q.charId}.webp`); });
   if (setup.mode === 'adv' && STAGES[setup.stage].id === 'mammuthones') loadClip('mammuthones', 'img/clip/mammuthones.webp');
@@ -640,6 +696,10 @@ function newGame(setup) {
     online: setup.mode === 'online' ? { me: setup.me } : null };
   show('game');
   buildSheet();
+  if (!window._barcollato && !reducedMotion) {
+    window._barcollato = true;
+    setTimeout(() => cameo('Ih cazzu, forse ho esagerato allo tzilleri…', 'cheer', true, 'g-barcolla'), 1400);
+  }
   const st = stageOf();
   say(st ? (st.intro || `${st.place}: ${st.goalText.toLowerCase()}. Coraggio!`) : line('start'));
   startTurn(true);
@@ -680,6 +740,8 @@ function startTurn(first = false) {
     say(p.name === 'Tziu Gonario' ? line('myTurn') : line('foeTurn', { n: p.name }));
     mood('think', 2500);
     cpuTurn();
+  } else if (!first && Math.random() < 0.15) {
+    say(pick(SARDO.ubriaco)); hiccup();
   } else if (G.online) {
     say(myTurn() ? line('yourTurnTu') : line('foeTurn', { n: p.name }));
     if (!myTurn()) mood('think', 2000);
@@ -699,7 +761,7 @@ const CUP_SVG = `<svg viewBox="0 0 80 96" aria-hidden="true">
   <path d="M22 16 L27 80" stroke="#fff" stroke-opacity=".12" stroke-width="5" stroke-linecap="round"/>
 </svg>`;
 
-// Clip animata (WebP con trasparenza): si scarica una volta e riparte da capo a ogni cinquina
+// Clip animata (WebP con trasparenza): si scarica una volta e riparte da capo a ogni Yatzy
 // Clip animate (WebP con trasparenza): si scaricano una volta e ripartono da capo ogni volta
 const CLIP_MS = 5200;
 const clips = {};
@@ -708,7 +770,10 @@ function loadClip(key, url) {
   clips[key] = null;
   fetch(url).then(r => (r.ok ? r.blob() : null)).then(b => { clips[key] = b; }).catch(() => {});
 }
-loadClip('gonario', `${G_DIR}ballo.webp`);
+const loadGonarioClips = () => {
+  loadClip('gonario', `${G_DIR}ballo.webp`);
+  ['vino', 'birra', 'sonno', 'ride', 'pecora', 'barcolla', 'singhiozzo'].forEach(k => loadClip(`g-${k}`, `${G_DIR}${k}.webp`));
+};
 
 // Tziu Gonario entra in scena per festeggiare (non blocca il gioco)
 let lastCameo = 0;
@@ -906,12 +971,27 @@ function commit(id) {
     }
   }
   if (!hadBonus && bonusOf(p) > 0) msg = line('bonus');
-  if (sc === 0 && !msg && isMe(p)) { if (OPTS.tease && Math.random() < 0.55) { msg = sline('teaseZero', 'bad', 0.4); mood('smirk', 2600); } else { msg = line('zero'); mood('sad'); } }
-  else if (!msg && OPTS.tease && isMe(p) && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) { msg = sline('teaseWaste', 'bad', 0.35); mood('smirk', 2600); }
-  else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc >= 25 && Math.random() < 0.6) { msg = sline('gloat', 'gloat', 0.5); mood('happy'); }
+  if (sc === 0 && !msg && isMe(p)) {
+    if (OPTS.tease && Math.random() < 0.8) {
+      msg = Math.random() < 0.6 ? SARDO.cottu[0] : sline('teaseZero', 'bad', 0.4);
+      mood('smirk', 2600);
+      cameo(msg, 'cheer', false, 'g-ride');                 // Tziu Gonario se la ride
+    } else { msg = line('zero'); mood('sad'); }
+  }
+  else if (!msg && OPTS.tease && isMe(p) && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) {
+    msg = Math.random() < 0.3 ? SARDO.cottu[0] : sline('teaseWaste', 'bad', 0.35);
+    mood('smirk', 2600);
+    if (Math.random() < 0.5) cameo(msg, 'cheer', false, 'g-ride');
+  }
+  else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc >= 25 && Math.random() < 0.6) {
+    msg = sline('gloat', 'gloat', 0.5); mood('happy');
+    cameo(pick(SARDO.vino), 'cheer', false, 'g-vino');      // si concede un bicchiere di vino nieddu
+  }
+  else if (!isMe(p) && !p.cpu && sc >= 30 && Math.random() < 0.4) cameo(pick(SARDO.vino), 'cheer', false, 'g-vino');
   else if (!msg && p.cpu && p.lines && sc >= 25 && Math.random() < 0.6) { msg = `${p.name}: «${pick(p.lines)}»`; mood('sad'); }
   if (isMe(p) && sc >= 25) cheerChip(G.cur);
-  if (isMe(p) && (sc >= 30 || (!hadBonus && bonusOf(p) > 0))) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
+  if (isMe(p) && !hadBonus && bonusOf(p) > 0) cameo('Bonus! Anche la pecorella è contenta: su pastore bonu non perdet mai una berbeghe.', 'cheer', true, 'g-pecora');
+  else if (isMe(p) && sc >= 30) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
   let ko = false;
   if (G.battle) {
@@ -1276,7 +1356,7 @@ function buildSheet() {
     sumRow('upper', 'Parte alta') +
     sumRow('bonus', `Bonus <small>(63 → +35)</small>`) +
     LOWER.filter(c => !c.rainbow || G.rainbow).map(row).join('') +
-    sumRow('extra', 'Extra <small>(cinquine, elisir)</small>') +
+    sumRow('extra', 'Extra <small>(Yatzy extra, elisir)</small>') +
     sumRow('total', 'Totale') +
     '</tbody>';
 }
@@ -2202,7 +2282,16 @@ function init() {
       blinkLoop();
     }, 2200 + Math.random() * 3600);
   })();
-  setTimeout(() => say('Ajò! Sono Tziu Gonario. Toccami quando vuoi: ho un proverbio per ogni lancio.', '#menuSay'), 600);
+  setTimeout(() => say('Ajò! Sono Tziu Gonario… hic! Toccami quando vuoi: ho un proverbio per ogni lancio. E un bicchiere per ogni proverbio.', '#menuSay'), 600);
+  // all'apertura: Tziu Gonario singhiozza col suo bicchiere (una volta per sessione)
+  setTimeout(() => loadClip('g-singhiozzo', `${G_DIR}singhiozzo.webp`), 400);
+  setTimeout(() => {
+    if ($('#menu').classList.contains('active') && clips['g-singhiozzo']) cameo(pick(SARDO.ubriaco), 'cheer', true, 'g-singhiozzo');
+  }, 4500);
+  // ogni tanto un singhiozzo
+  (function hicLoop() {
+    setTimeout(() => { hiccup(); hicLoop(); }, 9000 + Math.random() * 9000);
+  })();
   if (Shake.on) {
     Shake.attach();
     // su iPhone il permesso va chiesto dopo un tocco
