@@ -319,6 +319,62 @@ const Sound = {
   },
 };
 
+/* ───────────── Opzioni ───────────── */
+
+const OPTS = Object.assign({ fast: false, big: false, tease: true, music: true },
+  (() => { try { return JSON.parse(localStorage.getItem('cd.opts')) || {}; } catch { return {}; } })());
+const saveOpts = () => localStorage.setItem('cd.opts', JSON.stringify(OPTS));
+const T = ms => Math.round(ms * (OPTS.fast ? 0.45 : 1));   // tempi delle animazioni
+
+/* ───────────── Musica (brani generati, in loop) ───────────── */
+
+const Music = {
+  src: { bgm: 'audio/sottofondo.mp3', notte: 'audio/notte.mp3', vittoria: 'audio/vittoria.mp3' },
+  el: {}, cur: null, want: 'bgm', unlocked: false,
+  vol: { bgm: 0.3, notte: 0.4, vittoria: 0.6 },
+  get(k) {
+    if (!this.el[k]) { const a = new Audio(this.src[k]); a.loop = k !== 'vittoria'; a.preload = 'auto'; a.volume = 0; this.el[k] = a; }
+    return this.el[k];
+  },
+  fade(a, to, done) {
+    clearInterval(a._f);
+    const step = (to - a.volume) / 12;
+    a._f = setInterval(() => {
+      a.volume = Math.max(0, Math.min(1, a.volume + step));
+      if (Math.abs(a.volume - to) <= Math.abs(step) + 0.001) { a.volume = to; clearInterval(a._f); done && done(); }
+    }, 40);
+  },
+  play(k) {
+    this.want = k;
+    if (!OPTS.music || !this.unlocked || this.cur === k) return;
+    const prev = this.cur && this.el[this.cur];
+    if (prev) this.fade(prev, 0, () => prev.pause());
+    this.cur = k;
+    const a = this.get(k);
+    a.play().then(() => this.fade(a, this.vol[k])).catch(() => { this.cur = null; });
+  },
+  stop() {
+    const a = this.cur && this.el[this.cur];
+    this.cur = null;
+    if (a) this.fade(a, 0, () => a.pause());
+  },
+  jingle() {
+    if (!OPTS.music || !this.unlocked) return;
+    const bg = this.cur && this.el[this.cur];
+    if (bg) this.fade(bg, 0.06);
+    const a = this.get('vittoria');
+    a.currentTime = 0; a.volume = this.vol.vittoria;
+    a.onended = () => { if (bg && this.cur) this.fade(bg, this.vol[this.cur]); };
+    a.play().catch(() => {});
+  },
+  unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    this.play(this.want);
+  },
+  refresh() { if (OPTS.music) { const k = this.want; this.cur = null; this.play(k); } else this.stop(); },
+};
+
 /* ───────────── Tziu Gonario (personaggio) ───────────── */
 
 // Tziu Gonario: immagini in plastilina (posa + fotogrammi per ciglia e bocca)
@@ -443,7 +499,7 @@ const sline = (key, sd, p = 0.4) => (SARDO[sd] && Math.random() < p ? pick(SARDO
 const TEASE_SD = { teaseBad: 'bad', teaseNear: 'near', teaseZero: 'bad', teaseWaste: 'bad' };
 
 // Ogni tanto Tziu Gonario ti prende in giro (con affetto)
-const tease = (key, chance = 0.55) => { if (Math.random() < chance) { say(sline(key, TEASE_SD[key])); mood('smirk', 2600); return true; } return false; };
+const tease = (key, chance = 0.55) => { if (OPTS.tease && Math.random() < chance) { say(sline(key, TEASE_SD[key])); mood('smirk', 2600); return true; } return false; };
 
 // Espressioni: '' (sorriso), 'happy', 'wow', 'sad', 'think'
 let moodTimer = null;
@@ -489,7 +545,7 @@ function idleReset() {
     const inGame = $('#game').classList.contains('active');
     const inMenu = $('#menu').classList.contains('active');
     if (inGame && G && !busy && !curP().cpu) {
-      if (Math.random() < 0.45) { say(pick(SARDO.slow)); mood('smirk', 2000); }
+      if (OPTS.tease && Math.random() < 0.45) { say(pick(SARDO.slow)); mood('smirk', 2000); }
       else { say(line('wisdom')); mood('think', 1500); }
     }
     else if (inMenu) say(line('wisdom'), '#menuSay');
@@ -555,11 +611,14 @@ function newGame(setup) {
   const players = [mk(setup.name1 || (setup.mode === 'duo' ? 'Giocatore 1' : profileName() || 'Tu'))];
   let level = setup.level, maxRolls = 3, adv = null;
   if (setup.mode === 'cpu') players.push(mk('Tziu Gonario', true));
-  if (setup.mode === 'duo') players.push(mk(setup.name2 || 'Giocatore 2'));
+  if (setup.mode === 'duo') (setup.names || ['', setup.name2]).slice(1, 4).forEach((n, i) => players.push(mk(n || `Giocatore ${i + 2}`)));
   if (setup.mode === 'online') players.splice(0, players.length, ...setup.names.slice(0, 4).map(n => mk(n)));
   // ritratti: il tuo personaggio (e online quello dell'amico)
-  if (setup.mode === 'online') players.forEach((q, i) => { q.ava = charSrc(setup.chars?.[i]); });
-  else if (setup.mode !== 'duo') players[0].ava = charSrc(myChar());
+  const charIds = setup.mode === 'online' || setup.mode === 'duo' ? (setup.chars || []) : [myChar()];
+  charIds.forEach((c, i) => { if (players[i] && charSrc(c)) { players[i].ava = charSrc(c); players[i].charId = c; } });
+  // clip di festa dei personaggi in gioco (e del Mammuthones nella sfida finale)
+  players.forEach(q => { if (q.charId) loadClip(`char:${q.charId}`, `img/clip/${q.charId}.webp`); });
+  if (setup.mode === 'adv' && STAGES[setup.stage].id === 'mammuthones') loadClip('mammuthones', 'img/clip/mammuthones.webp');
   if (setup.mode === 'adv') {
     const st = STAGES[setup.stage];
     if (st.foe) {
@@ -641,24 +700,31 @@ const CUP_SVG = `<svg viewBox="0 0 80 96" aria-hidden="true">
 </svg>`;
 
 // Clip animata (WebP con trasparenza): si scarica una volta e riparte da capo a ogni cinquina
-let clipBlob = null;
-fetch(`${G_DIR}ballo.webp`).then(r => (r.ok ? r.blob() : null)).then(b => { clipBlob = b; }).catch(() => {});
+// Clip animate (WebP con trasparenza): si scaricano una volta e ripartono da capo ogni volta
 const CLIP_MS = 5200;
+const clips = {};
+function loadClip(key, url) {
+  if (key in clips) return;
+  clips[key] = null;
+  fetch(url).then(r => (r.ok ? r.blob() : null)).then(b => { clips[key] = b; }).catch(() => {});
+}
+loadClip('gonario', `${G_DIR}ballo.webp`);
 
 // Tziu Gonario entra in scena per festeggiare (non blocca il gioco)
 let lastCameo = 0;
-function cameo(text, kind = 'cheer', force = false) {
+function cameo(text, kind = 'cheer', force = false, clipKey = null) {
   if (reducedMotion) return;
   if (!force && Date.now() - lastCameo < 20000) return;
   lastCameo = Date.now();
   const box = $('#cameo');
   setLine(box.querySelector('.cameo-say'), text);
-  const clip = kind === 'wow' && clipBlob;
+  const blob = (clipKey && clips[clipKey]) || (kind === 'wow' && clips.gonario) || null;
+  const clip = !!blob;
   box.className = `cameo ${kind}${clip ? ' clip' : ''}`;
   const clipImg = box.querySelector('.cameo-clip');
   if (clip) {
     if (clipImg.dataset.url) URL.revokeObjectURL(clipImg.dataset.url);
-    clipImg.dataset.url = URL.createObjectURL(clipBlob);
+    clipImg.dataset.url = URL.createObjectURL(blob);
     clipImg.src = clipImg.dataset.url;
   }
   box.hidden = false;
@@ -682,7 +748,7 @@ async function rollDice(which, preset) {
   const cup = $('#cup');
   const cr = cup.getBoundingClientRect();
   cup.classList.remove('pour'); void cup.offsetWidth; cup.classList.add('pour');
-  await sleep(reducedMotion ? 0 : 260);
+  await sleep(reducedMotion ? 0 : T(260));
   which.forEach(i => {
     const el = dieEls[i];
     const dr = el.getBoundingClientRect();
@@ -696,7 +762,7 @@ async function rollDice(which, preset) {
     el.classList.add('rolling');
     setDie(el, G.dice[i], true);
   });
-  await sleep(reducedMotion ? 120 : 950);
+  await sleep(reducedMotion ? 120 : T(950));
   dieEls.forEach(el => el.classList.remove('rolling'));
   cup.classList.remove('pour');
   haptic(12);
@@ -709,11 +775,12 @@ async function doRoll(preset) {
   G.hasRolled = true;
   render();
   react();
+  if (!curP().cpu) tutEvent('roll');
 }
 
 function react() {
   const d = G.dice, c = counts(d), human = isMe(curP());
-  if (isCinq(d)) { mood('wow', 3000); say(line('cinq')); cameo(Math.random() < 0.5 ? SARDO.cinq[0] : line('cinq'), 'wow', true); Sound.fanfare(); FX.confetti(); haptic([40, 60, 40, 60, 80]); }
+  if (isCinq(d)) { mood('wow', 3000); say(line('cinq')); cameo(Math.random() < 0.5 ? SARDO.cinq[0] : line('cinq'), 'wow', true, curP().charId ? `char:${curP().charId}` : null); Sound.fanfare(); FX.confetti(); haptic([40, 60, 40, 60, 80]); }
   else if (hasRun(d, 5)) { mood('happy'); say(line('large')); if (human) cameo(line('large'), 'dance'); FX.burstAt($('#tray'), 50); haptic([30, 40, 30]); }
   else if (c.includes(3) && c.includes(2)) { mood('happy'); say(line('full')); FX.burstAt($('#tray'), 35); }
   else if (Math.max(...c) === 4) { if (!(human && G.rollsLeft === 0 && tease('teaseNear', 0.6))) { mood('happy'); say(line('poker')); } }
@@ -756,6 +823,7 @@ async function dieClick(i) {
   Sound.click();
   if (G.online) netSend({ t: 'hold', held: G.held });
   render();
+  tutEvent('hold');
 }
 
 function openFacePicker(i) {
@@ -808,6 +876,7 @@ function choose(id) {
   if (G.sel === id) {
     if (G.online) netSend({ t: 'commit', id });
     commit(id);
+    tutEvent('commit');
     if (G.online) netSend({ t: 'snap', s: snapshot() });
     return;
   }
@@ -815,6 +884,7 @@ function choose(id) {
   Sound.click();
   if (G.online) netSend({ t: 'sel', id });
   render();
+  tutEvent('sel');
 }
 
 function commit(id) {
@@ -836,8 +906,8 @@ function commit(id) {
     }
   }
   if (!hadBonus && bonusOf(p) > 0) msg = line('bonus');
-  if (sc === 0 && !msg && isMe(p)) { if (Math.random() < 0.55) { msg = sline('teaseZero', 'bad', 0.4); mood('smirk', 2600); } else { msg = line('zero'); mood('sad'); } }
-  else if (!msg && isMe(p) && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) { msg = sline('teaseWaste', 'bad', 0.35); mood('smirk', 2600); }
+  if (sc === 0 && !msg && isMe(p)) { if (OPTS.tease && Math.random() < 0.55) { msg = sline('teaseZero', 'bad', 0.4); mood('smirk', 2600); } else { msg = line('zero'); mood('sad'); } }
+  else if (!msg && OPTS.tease && isMe(p) && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) { msg = sline('teaseWaste', 'bad', 0.35); mood('smirk', 2600); }
   else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc >= 25 && Math.random() < 0.6) { msg = sline('gloat', 'gloat', 0.5); mood('happy'); }
   else if (!msg && p.cpu && p.lines && sc >= 25 && Math.random() < 0.6) { msg = `${p.name}: «${pick(p.lines)}»`; mood('sad'); }
   if (isMe(p) && sc >= 25) cheerChip(G.cur);
@@ -886,12 +956,12 @@ async function cpuTurn() {
   const p = curP();
   if (G.battle) p._oppHp = battleTarget(p).hp;
   render();
-  await sleep(900);
+  await sleep(T(900));
   while (G.rollsLeft > 0) {
     await doRoll();
     busy = true; render();
     if (G.rollsLeft === 0) break;
-    await sleep(650);
+    await sleep(T(650));
     const keep = bestKeep(G.dice, p, G.level, G.rainbow ? G.colors : undefined);
     if (keep === 31) break;
     let changed = false;
@@ -899,13 +969,13 @@ async function cpuTurn() {
       const h = !!((keep >> i) & 1);
       if (G.held[i] !== h) { G.held[i] = h; changed = true; }
     }
-    if (changed) { Sound.click(); render(); await sleep(650); }
+    if (changed) { Sound.click(); render(); await sleep(T(650)); }
   }
-  await sleep(500);
+  await sleep(T(500));
   const id = bestCategory(G.dice, p, G.level, G.rainbow ? G.colors : undefined);
   G.sel = id;
   render();
-  await sleep(900);
+  await sleep(T(900));
   busy = false;
   commit(id);
 }
@@ -965,8 +1035,12 @@ function endGame() {
     `<div class="end-row ${totals[i] === top ? 'win' : ''}"><span>${p.ava ? `<i class="chip-ava">${avatarHTML(p.ava)}</i>` : ''}${esc(p.name)}</span><b>${totals[i]}${G.battle ? ' <small>PV</small>' : ''}</b></div>`).join('');
   $('#endNote').textContent = note;
   Sound.fanfare();
-  const won = G.adv ? title === 'Missione compiuta!' : !ps[totals.indexOf(top)].cpu;
-  setTimeout(() => { $('#endOverlay').hidden = false; if (won) FX.confetti(); }, 700);
+  const won = G.adv ? title === 'Missione compiuta!' : isMe(ps[totals.indexOf(top)]);
+  // battere il Mammuthones: prima il suo ballo, poi la schermata finale
+  const bossDown = won && G.adv && stageOf().id === 'mammuthones' && clips.mammuthones;
+  if (bossDown) cameo('Hai battuto il Mammuthones! Ora balla per te: a chent\'annos!', 'wow', true, 'mammuthones');
+  if (won) Music.jingle();
+  setTimeout(() => { $('#endOverlay').hidden = false; if (won) FX.confetti(); }, bossDown ? CLIP_MS + 300 : 700);
 }
 
 /* ───────────── Mappa e briefing ───────────── */
@@ -1459,7 +1533,7 @@ function netErrText(err) {
 
 function netClear() {
   clearTimeout(NET.waitTimer);
-  Object.assign(NET, { peer: null, role: null, code: null, host: null, open: false, guests: [], active: [], lobby: [], queue: Promise.resolve() });
+  Object.assign(NET, { peer: null, role: null, code: null, host: null, open: false, guests: [], active: [], lobby: [], queue: Promise.resolve(), reconnecting: false });
   $('#roomBox').hidden = true;
   $('#lobbyBox').hidden = true;
 }
@@ -1509,10 +1583,11 @@ async function hostRoom() {
   });
   peer.on('connection', conn => {
     const refuse = t => conn.on('open', () => { conn.send({ t }); setTimeout(() => conn.close(), 400); });
-    if (gameRunning()) return refuse('busy');
+    if (gameRunning()) return attachGuest(conn, true);      // può essere qualcuno che si ricollega
     if (NET.guests.length >= MAX_ONLINE - 1) return refuse('full');
     attachGuest(conn);
   });
+  peer.on('disconnected', () => { try { peer.reconnect(); } catch {} });
   peer.on('error', err => {
     if (err.type === 'unavailable-id') return hostRoom();   // codice già usato: ne provo un altro
     if (err.type === 'peer-unavailable') return;          // un ospite sparito: non è grave
@@ -1520,8 +1595,8 @@ async function hostRoom() {
   });
 }
 
-function attachGuest(conn) {
-  const g = { conn, name: '', char: null, open: false };
+function attachGuest(conn, pending = false) {
+  const g = { conn, name: '', char: null, open: false, pending };
   NET.guests.push(g);
   conn.on('open', () => { g.open = true; });
   conn.on('data', msg => { NET.queue = NET.queue.then(() => onHostData(g, msg)).catch(() => {}); });
@@ -1553,13 +1628,21 @@ function renderLobby(hostName) {
 
 async function onHostData(g, msg) {
   if (!msg || typeof msg !== 'object') return;
+  g = g.alias || g;
+  if (g.pending) {
+    if (msg.t === 'rejoin') return handleRejoin(g, msg);
+    try { g.conn.send({ t: 'busy' }); } catch {}
+    setTimeout(() => { try { g.conn.close(); } catch {} }, 400);
+    NET.guests = NET.guests.filter(x => x !== g);
+    return;
+  }
   if (msg.t === 'hello') {
     g.name = String(msg.name || 'Amico').slice(0, 14);
     g.char = typeof msg.char === 'string' ? msg.char : null;
     if (!gameRunning()) broadcastLobby();
     return;
   }
-  if (msg.t === 'bye') return onGuestGone(g);
+  if (msg.t === 'bye') { g.lost = false; clearTimeout(g.lostTimer); NET.guests = NET.guests.filter(x => x !== g); if (gameRunning()) { const idx = NET.active.indexOf(g) + 1; if (idx > 0) { netSend({ t: 'left', idx, name: g.name }); playerLeft(idx, g.name); } } else broadcastLobby(); return; }
   if (msg.t === 'again') {
     if ($('#endOverlay').hidden) return;
     $('#endNote').textContent = `${g.name} vuole la rivincita!`;
@@ -1570,6 +1653,49 @@ async function onHostData(g, msg) {
     netSend(msg, g);          // lo giro agli altri
     await applyAction(msg);   // e lo applico qui
   }
+}
+
+function handleRejoin(g, msg) {
+  const name = String(msg.name || '');
+  const slot = NET.active.find(x => x.lost && x.name === name);
+  if (!slot) {
+    try { g.conn.send({ t: 'busy' }); } catch {}
+    NET.guests = NET.guests.filter(x => x !== g);
+    return;
+  }
+  clearTimeout(slot.lostTimer);
+  Object.assign(slot, { conn: g.conn, open: true, lost: false });
+  g.alias = slot;
+  NET.guests = NET.guests.filter(x => x !== g);
+  NET.guests.push(slot);
+  const idx = NET.active.indexOf(slot) + 1;
+  try { slot.conn.send({ t: 'state', s: fullState(), me: idx }); } catch {}
+  netSend({ t: 'note', text: `${slot.name} è tornato! Si riprende.` }, slot);
+  say(`${slot.name} è tornato! Si riprende.`);
+}
+
+function fullState() {
+  const keys = ['cur', 'round', 'rounds', 'rainbow', 'battle', 'maxRolls', 'dice', 'held', 'colors', 'rollsLeft', 'rollsTotal', 'hasRolled', 'sel'];
+  const st = Object.fromEntries(keys.map(k => [k, G[k]]));
+  st.players = G.players.map(q => ({ name: q.name, scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, ava: q.ava, charId: q.charId, rainbow: q.rainbow, battle: q.battle }));
+  return st;
+}
+
+function applyState(st, me) {
+  if (!st) return;
+  if (!G?.online) {
+    startOnline(st.battle ? 'battle' : st.rainbow ? 'rainbow' : 'classic', st.players.map(p => p.name), me, st.players.map(p => p.charId));
+  }
+  const { players, ...rest } = st;
+  Object.assign(G, rest);
+  G.players.forEach((q, i) => Object.assign(q, players[i] || {}));
+  G.online.me = me;
+  G.online.gone = false;
+  busy = false;
+  $('#endOverlay').hidden = true;
+  buildSheet();
+  render();
+  say('Ricollegato! Si riprende da dove eravamo.');
 }
 
 function netStartGame() {
@@ -1597,21 +1723,53 @@ async function joinRoom(raw) {
   NET.code = code;
   const peer = NET.peer = new window.Peer();
   peer.on('open', () => {
-    const conn = NET.host = peer.connect(PEER_PREFIX + code, { reliable: true });
-    conn.on('open', () => {
-      NET.open = true;
-      clearTimeout(NET.waitTimer);
-      netStatus('Collegato! Entro nella stanza…', 'ok');
-      netSend({ t: 'hello', name: myName(), char: myChar() });
-    });
-    conn.on('data', msg => { NET.queue = NET.queue.then(() => onGuestData(msg)).catch(() => {}); });
-    conn.on('close', onHostGone);
-    conn.on('error', onHostGone);
+    connectToHost(false);
     NET.waitTimer = setTimeout(() => {
       if (!NET.open) netStatus('Non riesco a collegarmi. Controllate il codice, oppure provate col Wi-Fi: su alcune reti mobili il collegamento diretto non passa.', 'err');
     }, 15000);
   });
-  peer.on('error', err => netStatus(netErrText(err), 'err'));
+  peer.on('disconnected', () => { try { peer.reconnect(); } catch {} });
+  peer.on('error', err => { if (!NET.reconnecting) netStatus(netErrText(err), 'err'); });
+}
+
+function connectToHost(rejoin) {
+  const conn = NET.host = NET.peer.connect(PEER_PREFIX + NET.code, { reliable: true });
+  conn.on('open', () => {
+    if (NET.host !== conn) return;
+    NET.open = true;
+    clearTimeout(NET.waitTimer);
+    if (rejoin) {
+      NET.reconnecting = false;
+      netSend({ t: 'rejoin', name: G.players[G.online.me].name, char: myChar() });
+    } else {
+      netStatus('Collegato! Entro nella stanza…', 'ok');
+      netSend({ t: 'hello', name: myName(), char: myChar() });
+    }
+  });
+  conn.on('data', msg => { if (NET.host === conn) NET.queue = NET.queue.then(() => onGuestData(msg)).catch(() => {}); });
+  conn.on('close', () => { if (NET.host === conn) onHostGone(); });
+  conn.on('error', () => { if (NET.host === conn) onHostGone(); });
+}
+
+// La rete è caduta durante la partita: provo a ricollegarmi per un po'
+function tryReconnect() {
+  NET.reconnecting = true;
+  say('Connessione persa: mi ricollego…');
+  let tries = 0;
+  const attempt = () => {
+    if (!NET.reconnecting || !NET.peer) return;
+    if (++tries > 8) {
+      NET.reconnecting = false;
+      G.online.gone = true;
+      busy = false;
+      render();
+      return showGone('Non riesco a ricollegarmi alla stanza. Controlla la connessione e create una nuova stanza.');
+    }
+    try { if (NET.peer.disconnected) NET.peer.reconnect(); } catch {}
+    connectToHost(true);
+    NET.waitTimer = setTimeout(() => { if (!NET.open) attempt(); }, 3000);
+  };
+  attempt();
 }
 
 async function onGuestData(msg) {
@@ -1629,8 +1787,14 @@ async function onGuestData(msg) {
     case 'left':
       playerLeft(msg.idx, msg.name);
       break;
+    case 'state':
+      applyState(msg.s, msg.me);
+      break;
+    case 'note':
+      if (G?.online) say(String(msg.text || '').slice(0, 140));
+      break;
     case 'bye':
-      onHostGone();
+      onHostGone(true);
       break;
     default:
       if (RELAY.has(msg.t)) await applyAction(msg);
@@ -1712,14 +1876,28 @@ function playerLeft(idx, name) {
   } else render();
 }
 
+const REJOIN_MS = 25000;
+
 function onGuestGone(g) {
+  if (g.alias) { if (g.alias.conn !== g.conn) return; g = g.alias; }
   if (!NET.guests.includes(g)) return;
   NET.guests = NET.guests.filter(x => x !== g);
+  if (g.pending) return;
   if (gameRunning()) {
     const idx = NET.active.indexOf(g) + 1;
     if (idx > 0) {
-      netSend({ t: 'left', idx, name: g.name });
-      playerLeft(idx, g.name);
+      // gli do un po' di tempo per ricollegarsi prima di toglierlo dalla partita
+      g.open = false;
+      g.lost = true;
+      say(`${g.name} ha perso la connessione: lo aspettiamo un attimo…`);
+      netSend({ t: 'note', text: `${g.name} ha perso la connessione: lo aspettiamo un attimo…` });
+      clearTimeout(g.lostTimer);
+      g.lostTimer = setTimeout(() => {
+        if (!g.lost || !gameRunning()) return;
+        g.lost = false;
+        netSend({ t: 'left', idx, name: g.name });
+        playerLeft(idx, g.name);
+      }, REJOIN_MS);
     }
   } else if (NET.role === 'host') {
     if (g.name) netStatus(`${g.name} è uscito dalla stanza.`, 'err');
@@ -1727,10 +1905,11 @@ function onGuestGone(g) {
   }
 }
 
-function onHostGone() {
+function onHostGone(final = false) {
   if (!NET.host) return;
   NET.open = false;
   NET.host = null;
+  if (!final && gameRunning() && !G.online.gone) return tryReconnect();
   const name = NET.lobby[0]?.name || 'Chi ha creato la stanza';
   if (G?.online && $('#game').classList.contains('active') && !G.online.gone) {
     G.online.gone = true;
@@ -1797,6 +1976,105 @@ function initOnline() {
   }
 }
 
+/* ───────────── Tutorial guidato (solo se richiesto) ───────────── */
+
+const TUT_STEPS = [
+  { text: 'Ajò! Ti insegno Yatzy in un minuto. Ogni turno hai tre lanci per fare la combinazione migliore.', next: true },
+  { target: '#btnRoll', text: 'Tocca "Lancia" (o il bossolo) per lanciare i cinque dadi.', wait: 'roll' },
+  { target: '#tray', text: 'Tocca i dadi che ti piacciono: si sollevano e restano fermi. Gli altri li rilanci.', wait: 'hold', next: true },
+  { target: '#btnRoll', text: 'Ora rilancia quelli che non hai tenuto. Ti resta ancora un lancio dopo questo.', wait: 'roll' },
+  { target: '#board', text: 'Ogni tessera mostra quanto vale con questi dadi. La migliore brilla. Toccane una per sceglierla.', wait: 'sel' },
+  { target: '#btnScore', text: 'Toccala di nuovo, o premi "Segna", per confermare. Ogni casella si usa una volta sola.', wait: 'commit' },
+  { target: '.bonusbar', text: 'Parte alta: la somma degli 1, dei 2… fino ai 6. Arriva a 63 e prendi 35 punti di bonus: la pecorella ti mostra quanto manca.', next: true },
+  { target: '.b-lower', text: 'Parte bassa: Tris, Poker, Full (25), Scale (30 e 40), Yatzy (50) e Chance. In tutto 13 turni.', next: true },
+  { text: 'Consigli da pastore: punta ai 5 e ai 6 per il bonus, tieni la Chance per i turni sfortunati, e non sprecare lo Yatzy troppo presto. Buona partita!', next: true, last: true },
+];
+const TUT = { on: false, i: 0 };
+
+function startTutorial() {
+  clearSave();
+  newGame({ mode: 'solo', level: 'normal', name1: '' });
+  TUT.on = true; TUT.i = 0;
+  document.body.classList.add('tut');
+  showTutStep();
+}
+
+function showTutStep() {
+  const st = TUT_STEPS[TUT.i];
+  document.querySelectorAll('.coach-on').forEach(el => el.classList.remove('coach-on'));
+  if (!st) return endTutorial();
+  const box = $('#coach');
+  box.hidden = false;
+  setLine(box.querySelector('.coach-text'), st.text);
+  box.querySelector('.coach-step').textContent = `${TUT.i + 1} / ${TUT_STEPS.length}`;
+  const nextBtn = box.querySelector('[data-next]');
+  nextBtn.hidden = !st.next;
+  nextBtn.textContent = st.last ? 'Gioca!' : st.wait ? 'Ho capito' : 'Avanti';
+  if (st.target) {
+    const el = $(st.target);
+    if (el) { el.classList.add('coach-on'); el.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' }); }
+  }
+  box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
+}
+
+function tutEvent(name) {
+  if (!TUT.on) return;
+  const st = TUT_STEPS[TUT.i];
+  if (st && st.wait === name) { TUT.i++; setTimeout(showTutStep, name === 'roll' ? 300 : 150); }
+}
+
+function endTutorial() {
+  TUT.on = false;
+  document.body.classList.remove('tut');
+  $('#coach').hidden = true;
+  document.querySelectorAll('.coach-on').forEach(el => el.classList.remove('coach-on'));
+}
+
+/* ───────────── Più giocatori sullo stesso telefono ───────────── */
+
+const LOCAL = { count: 2, names: ['', '', '', ''], chars: [null, 'tenore', 'boe', 'jana'] };
+function buildLocalRows() {
+  // personaggi di partenza tutti diversi (e diversi dal tuo), finché non li cambiate
+  if (!LOCAL.touched) {
+    const free = PLAYER_CHARS.map(c => c.id).filter(id => id !== myChar());
+    for (let i = 1; i < 4; i++) LOCAL.chars[i] = free[(i - 1) % free.length];
+  }
+  $('#localRows').innerHTML = Array.from({ length: LOCAL.count - 1 }, (_, k) => {
+    const i = k + 1, c = PLAYER_CHARS.find(x => x.id === LOCAL.chars[i]);
+    return `<div class="lp-row">
+      <button class="lp-ava" data-i="${i}" title="Tocca per cambiare personaggio">${avatarHTML(charSrc(LOCAL.chars[i]))}<small>${c ? c.name : ''}</small></button>
+      <input class="input lp-name" data-i="${i}" maxlength="14" placeholder="Giocatore ${i + 1}" value="${esc(LOCAL.names[i] || '')}" autocomplete="off">
+    </div>`;
+  }).join('');
+}
+
+/* ───────────── Schermata opzioni ───────────── */
+
+function openOptions() {
+  const set = (id, v) => document.querySelectorAll(`#${id} button`).forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  set('optSpeed', OPTS.fast ? 'fast' : 'normal');
+  set('optText', OPTS.big ? 'big' : 'normal');
+  set('optTease', OPTS.tease ? 'on' : 'off');
+  set('optMusic', OPTS.music ? 'on' : 'off');
+  set('optSound', Sound.on ? 'on' : 'off');
+  set('optShake', Shake.on ? 'on' : 'off');
+  show('options');
+}
+function applyOpts() {
+  document.body.classList.toggle('fast', OPTS.fast);
+  document.body.classList.toggle('big', OPTS.big);
+}
+function initOptions() {
+  applyOpts();
+  initSeg('optSpeed', v => { OPTS.fast = v === 'fast'; saveOpts(); applyOpts(); });
+  initSeg('optText', v => { OPTS.big = v === 'big'; saveOpts(); applyOpts(); });
+  initSeg('optTease', v => { OPTS.tease = v === 'on'; saveOpts(); if (OPTS.tease) say(pick(SARDO.near), '#optSay'); else say('Va bene, starò zitto… o quasi.', '#optSay'); });
+  initSeg('optMusic', v => { OPTS.music = v === 'on'; saveOpts(); Music.refresh(); });
+  initSeg('optSound', v => { if ((v === 'on') !== Sound.on) toggleSound(); });
+  initSeg('optShake', async v => { if ((v === 'on') !== Shake.on) { await toggleShake(); if ((v === 'on') !== Shake.on) openOptions(); } });
+  $('#btnOptions').addEventListener('click', openOptions);
+}
+
 /* ───────────── Profilo: nome e personaggio ───────────── */
 
 let pickedChar = null;
@@ -1845,7 +2123,10 @@ function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
   $('#endOverlay').hidden = true;
   $('#facePick').hidden = true;
+  if (id !== 'game' && TUT.on) endTutorial();
   if (id === 'menu') { refreshMenu(); refreshMenuProfile(); }
+  if (id === 'game') Music.play(G?.adv && stageOf()?.id === 'mammuthones' ? 'notte' : 'bgm');
+  else if (id !== 'game') Music.play('bgm');
   if (id === 'map') renderMap();
   if (id === 'menu' && NET.peer) netLeave();
 }
@@ -1945,15 +2226,29 @@ function init() {
   $('#btnCharm').addEventListener('click', useCharm);
   $('#btnNext').addEventListener('click', () => openBrief(G.adv.stage + 1));
   $('#btnSound').addEventListener('click', toggleSound);
-  $('#btnSound2').addEventListener('click', toggleSound);
+  $('#btnSound2').addEventListener('click', () => {
+    toggleSound();
+    OPTS.music = Sound.on; saveOpts(); Music.refresh();
+  });
 
   const savedName = localStorage.getItem('cd.name') || '';
   $('#name1').value = savedName;
   initSeg('segMode', v => {
     $('#levelBox').hidden = v !== 'cpu';
-    $('#name2').hidden = v !== 'duo';
-    $('#name1').placeholder = v === 'duo' ? 'Primo giocatore' : 'Il tuo nome';
+    $('#localBox').hidden = v !== 'duo';
+    $('#name1').placeholder = v === 'duo' ? 'Primo giocatore (tu)' : 'Il tuo nome';
+    if (v === 'duo') buildLocalRows();
   });
+  initSeg('segCount', v => { LOCAL.count = Number(v); buildLocalRows(); });
+  $('#localRows').addEventListener('click', e => {
+    const b = e.target.closest('.lp-ava'); if (!b) return;
+    const i = Number(b.dataset.i), ids = PLAYER_CHARS.map(c => c.id);
+    LOCAL.chars[i] = ids[(ids.indexOf(LOCAL.chars[i]) + 1) % ids.length];
+    LOCAL.touched = true;
+    Sound.click();
+    buildLocalRows();
+  });
+  $('#localRows').addEventListener('input', e => { const inp = e.target.closest('.lp-name'); if (inp) LOCAL.names[Number(inp.dataset.i)] = inp.value; });
   initSeg('segLevel');
   initSeg('segRules', v => {
     $('#rulesDesc').textContent = {
@@ -1968,10 +2263,21 @@ function init() {
     const rules = segValue('segRules');
     let mode = segValue('segMode');
     if (rules === 'battle' && mode === 'solo') mode = 'cpu';
-    newGame({ mode, level: segValue('segLevel'), rainbow: rules === 'rainbow', battle: rules === 'battle', name1, name2: $('#name2').value.trim() });
+    const names = [name1, ...LOCAL.names.slice(1, LOCAL.count).map(n => (n || '').trim())];
+    const chars = [myChar(), ...LOCAL.chars.slice(1, LOCAL.count)];
+    newGame({ mode, level: segValue('segLevel'), rainbow: rules === 'rainbow', battle: rules === 'battle', name1, names, chars });
   });
 
   initOnline();
+  initOptions();
+  $('#btnLearn').addEventListener('click', startTutorial);
+  $('#btnLearn2').addEventListener('click', startTutorial);
+  $('#coach').addEventListener('click', e => {
+    if (e.target.closest('[data-skip]')) return endTutorial();
+    if (e.target.closest('[data-next]')) { TUT.i++; showTutStep(); }
+  });
+  addEventListener('pointerdown', () => Music.unlock(), { once: true });
+  addEventListener('keydown', () => Music.unlock(), { once: true });
   $('#btnProfile').addEventListener('click', () => openProfile(false));
   $('#profBack').addEventListener('click', () => show('menu'));
   $('#profGrid').addEventListener('click', e => {

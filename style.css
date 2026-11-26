@@ -681,6 +681,44 @@ tr:has(.cell.pickable) .lbl { cursor: pointer; }
 .chip.out { opacity: .4; filter: grayscale(.8); }
 .chip.out span { text-decoration: line-through; }
 
+/* Amici sullo stesso telefono */
+.lp-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.lp-row .input { margin: 0; flex: 1; }
+.lp-ava { flex: none; width: 64px; padding: 0; border: 1.5px solid var(--line); border-radius: 14px; background: rgba(0, 0, 0, .2); color: var(--muted); display: flex; flex-direction: column; align-items: center; }
+.lp-ava .ava { width: 52px; height: 64px; object-fit: contain; object-position: 50% 100%; }
+.lp-ava small { font-size: 12px; line-height: 1.2; padding: 0 2px 4px; text-align: center; }
+#localBox .small { margin: 8px 0 4px; }
+
+/* Opzioni: animazioni veloci e testo grande */
+body.fast .die.rolling, body.fast .die.rolling .shadow { animation-duration: .45s; }
+body.fast .cube { transition-duration: .45s; }
+body.fast .cup.pour { animation-duration: .45s; }
+body.big .screen { zoom: 1.12; }
+
+/* Tutorial */
+.coach {
+  position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(94vw, 460px); z-index: 28; padding: 12px 14px;
+  border-radius: 18px; background: var(--ivory); color: var(--ink);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .55), 0 0 0 3px rgba(240, 166, 64, .6);
+}
+.coach[hidden] { display: none; }
+.coach.pop { animation: coachIn .35s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes coachIn { from { transform: translate(-50%, 20px); opacity: 0; } }
+.coach-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--copper-d); }
+.coach-head b { flex: 1; }
+.coach-step { font-variant-numeric: tabular-nums; }
+.coach-ava { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; border: 2px solid var(--copper); background: #4a1d1f; }
+.coach-ava img { width: 230%; margin: -2px 0 0 -58%; }
+.coach-text { margin: 8px 0 10px; font-family: var(--font-title); font-size: 18px; line-height: 1.35; }
+.coach-btns { display: flex; justify-content: space-between; align-items: center; }
+.coach-btns .link { color: var(--copper-d); }
+.coach-btns .btn { min-height: 42px; }
+.coach-on { position: relative; z-index: 5; animation: coachPulse 1.4s ease-in-out infinite; border-radius: 18px; }
+@keyframes coachPulse { 50% { box-shadow: 0 0 0 4px var(--amber), 0 0 26px rgba(240, 166, 64, .8); } }
+#btnLearn2 { margin: 0 0 12px; }
+body.tut #game.screen { padding-bottom: 240px; }
+
 /* ── Fine partita ── */
 .overlay {
   position: fixed; inset: 0; z-index: 10;

@@ -30,12 +30,14 @@
       <button class="btn primary" id="btnClassic">Partita classica</button>
       <button class="btn primary" id="btnAdventure">Avventura</button>
       <button class="btn primary" id="btnOnline">Sfida un amico online</button>
+      <button class="btn ghost" id="btnLearn">Impara a giocare con Tziu Gonario</button>
       <button class="btn ghost" id="btnRules">Regole</button>
     </nav>
     <p class="best" id="bestScore"></p>
     <div class="toggles">
-      <button class="sound-toggle" id="btnSound" aria-label="Suoni">♪ Suoni: sì</button>
-      <button class="sound-toggle" id="btnShake">📳 Agita per lanciare: no</button>
+      <button class="sound-toggle" id="btnOptions">⚙︎ Opzioni</button>
+      <button id="btnSound" hidden></button>
+      <button id="btnShake" hidden></button>
     </div>
   </div>
 </section>
@@ -48,7 +50,7 @@
     <p class="label">Avversario</p>
     <div class="seg" id="segMode">
       <button data-v="cpu" class="on">Tziu Gonario</button>
-      <button data-v="duo">Due giocatori</button>
+      <button data-v="duo">Amici qui</button>
       <button data-v="solo">Da solo</button>
     </div>
     <div id="levelBox">
@@ -68,8 +70,41 @@
     <p class="muted small" id="rulesDesc"></p>
     <p class="label">Nomi</p>
     <input id="name1" class="input" maxlength="14" placeholder="Il tuo nome" autocomplete="off">
-    <input id="name2" class="input" maxlength="14" placeholder="Secondo giocatore" autocomplete="off" hidden>
+    <div id="localBox" hidden>
+      <p class="label">Quanti siete sullo stesso telefono?</p>
+      <div class="seg" id="segCount">
+        <button data-v="2" class="on">2</button>
+        <button data-v="3">3</button>
+        <button data-v="4">4</button>
+      </div>
+      <p class="muted small">Tocca il ritratto per cambiare personaggio. Vi passate il telefono a ogni turno.</p>
+      <div id="localRows"></div>
+    </div>
     <button class="btn primary wide" id="btnStart">Inizia</button>
+  </div>
+</section>
+
+<!-- OPZIONI -->
+<section id="options" class="screen">
+  <div class="panel">
+    <button class="link" data-go="menu">‹ Indietro</button>
+    <div class="prof-head">
+      <div class="portrait small" data-mentor></div>
+      <p class="bubble" id="optSay">Qui decidi tu come si gioca, bellu meu.</p>
+    </div>
+    <h2>Opzioni</h2>
+    <p class="label">Velocità delle animazioni</p>
+    <div class="seg" id="optSpeed"><button data-v="normal" class="on">Normale</button><button data-v="fast">Veloce</button></div>
+    <p class="label">Testo</p>
+    <div class="seg" id="optText"><button data-v="normal" class="on">Normale</button><button data-v="big">Più grande</button></div>
+    <p class="label">Prese in giro di Tziu Gonario</p>
+    <div class="seg" id="optTease"><button data-v="on" class="on">Sì</button><button data-v="off">No</button></div>
+    <p class="label">Musica</p>
+    <div class="seg" id="optMusic"><button data-v="on" class="on">Sì</button><button data-v="off">No</button></div>
+    <p class="label">Effetti sonori</p>
+    <div class="seg" id="optSound"><button data-v="on" class="on">Sì</button><button data-v="off">No</button></div>
+    <p class="label">Agita il telefono per lanciare</p>
+    <div class="seg" id="optShake"><button data-v="on">Sì</button><button data-v="off" class="on">No</button></div>
   </div>
 </section>
 
@@ -129,6 +164,7 @@
   <div class="panel">
     <button class="link" data-go="menu">‹ Indietro</button>
     <h2>Come si gioca</h2>
+    <button class="btn wide" id="btnLearn2">Prova la partita guidata</button>
     <p>Ogni turno hai <b>tre lanci</b>. Dopo il primo, tocca i dadi che vuoi tenere e rilancia gli altri. Poi scegli una casella del foglio: ogni casella si usa una sola volta, e dopo 13 turni vince chi ha più punti.</p>
     <h3>Parte alta</h3>
     <p>Uno, Due… Sei: la somma dei dadi di quel numero. Se la parte alta arriva a <b>63</b> ottieni un <b>bonus di 35</b>.</p>
@@ -239,6 +275,12 @@
     <button class="btn primary wide" id="btnAgain">Rivincita</button>
     <button class="btn wide" id="btnEndMenu">Menù</button>
   </div>
+</div>
+
+<div id="coach" class="coach" hidden>
+  <div class="coach-head"><span class="coach-ava"><img src="img/gonario/idle.webp" alt=""></span><b>Tziu Gonario ti insegna</b><span class="coach-step"></span></div>
+  <p class="coach-text"></p>
+  <div class="coach-btns"><button class="link" data-skip>Salta</button><button class="btn primary" data-next>Avanti</button></div>
 </div>
 
 <div id="cameo" class="cameo" hidden>

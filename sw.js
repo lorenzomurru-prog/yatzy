@@ -1,5 +1,5 @@
 // Cache per giocare offline. Cambia VERSION quando aggiorni i file.
-const VERSION = 'cd-v17';
+const VERSION = 'cd-v18';
 const FILES = ['./', 'index.html', 'style.css', 'game.js', 'icon.svg', 'manifest.webmanifest',
   'img/gonario/idle.webp', 'img/gonario/blink.webp', 'img/gonario/talk.webp', 'img/gonario/happy.webp',
   'img/gonario/wow.webp', 'img/gonario/smirk.webp', 'img/gonario/sad.webp', 'img/gonario/think.webp', 'img/gonario/ballo.webp',
@@ -7,7 +7,8 @@ const FILES = ['./', 'index.html', 'style.css', 'game.js', 'icon.svg', 'manifest
   'img/rivali/merdules.webp', 'img/rivali/mammuthones.webp',
   'img/giocatori/pastoreddu.webp', 'img/giocatori/tenore.webp', 'img/giocatori/launeddas.webp',
   'img/giocatori/boe.webp', 'img/giocatori/jana.webp', 'img/giocatori/piscadore.webp',
-  'img/giocatori/sirbone.webp', 'img/giocatori/mufrone.webp', 'img/giocatori/cuaddeddu.webp'];
+  'img/giocatori/sirbone.webp', 'img/giocatori/mufrone.webp', 'img/giocatori/cuaddeddu.webp',
+  'audio/sottofondo.mp3', 'audio/notte.mp3', 'audio/vittoria.mp3'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
