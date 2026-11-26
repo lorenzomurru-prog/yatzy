@@ -32,13 +32,29 @@ const BONUS_AT = 63, BONUS = 35, CINQ_BONUS = 100;
 const MAX_HP = 150, BATTLE_BONUS_HEAL = 35, BATTLE_EXTRA_HIT = 50;
 // Bevuta: 5 bicchieri a testa. La parte bassa fa bere l'avversario, la parte alta fa smaltire.
 const GLASSES = 5, SALUDE_ROUNDS = [4, 8, 12];
+const DRINKS = {
+  ichnusa:    { name: 'Ichnusa',         emoji: '🍺', color: '#e8b33a' },
+  vino:       { name: 'vino nieddu',     emoji: '🍷', color: '#7a0f1d' },
+  mirto:      { name: 'mirto',           emoji: '🫐', color: '#5b1f63' },
+  filu:       { name: "filu 'e ferru",   emoji: '🥃', color: '#efe8d2' },
+  cannonau:   { name: 'Cannonau',        emoji: '🍷', color: '#4a0410' },
+  vermentino: { name: 'Vermentino',      emoji: '🥂', color: '#e3d77e' },
+};
+const DRINK_OF = { tris: 'ichnusa', poker: 'ichnusa', full: 'vino', small: 'vino', large: 'vino', chance: 'mirto', cinq: 'filu', mono: 'cannonau', fullc: 'vermentino' };
 function glassesFor(id, sc) {
   if (!sc) return 0;
-  if (id === 'cinq') return 2;                                     // Yatzy: due bicchieri a tzoccu
-  if (['tris', 'poker', 'full', 'small', 'large'].includes(id)) return 1;
+  if (id === 'cinq' || id === 'mono') return 2;                    // filu 'e ferru e Cannonau: due bicchieri a tzoccu
+  if (['tris', 'poker', 'full', 'small', 'large', 'fullc'].includes(id)) return 1;
   if (id === 'chance') return sc >= 25 ? 1 : 0;
   return 0;
 }
+// Spuntini della parte alta: più dadi uguali, più si smaltisce
+const SNACKS = {
+  pane:        { name: 'pane carasau', sober: 1 },
+  culurgiones: { name: 'culurgiones',  sober: 2 },
+  casu:        { name: 'casu marzu',   sober: 3 },
+  salsiccia:   { name: 'salsiccia sarda', sober: 2 },
+};
 const shakesFor = id => ['full', 'small', 'large'].includes(id);   // Full e Scale: il tavolo gira al turno dopo
 const catsOf = p => (p.rainbow ? [...CATS, ...RAINBOW_CATS] : CATS);
 
@@ -565,7 +581,7 @@ function mood(m, ms = 2400) {
 
 // Tziu Gonario è sempre un po' brillo: ogni tanto gli scappa un singhiozzo
 function hiccup() {
-  const el = [...document.querySelectorAll('[data-mentor]')].find(x => x.offsetParent && !x.classList.contains('player') && !x.closest('#cameo'));
+  const el = [...document.querySelectorAll('[data-mentor]')].find(x => x.offsetParent && !x.closest('#cameo') && (!x.classList.contains('player') || Number(x.dataset.drunk) >= 2));
   if (!el || reducedMotion) return;
   el.classList.remove('hic'); void el.offsetWidth; el.classList.add('hic');
   const r = el.getBoundingClientRect();
@@ -696,7 +712,10 @@ function nextTurn() {
   for (let k = 0; k < n; k++) {
     G.cur = (G.cur + 1) % n;
     if (G.cur === 0) G.round++;
-    if (!G.players[G.cur].out) return;
+    const q = G.players[G.cur];
+    if (q.out) continue;
+    if (q.skip) { q.skip = false; continue; }          // il casu marzu fa saltare un turno
+    return;
   }
 }
 const rolled = () => G.hasRolled;
@@ -709,8 +728,9 @@ function newGame(setup) {
     const st = STAGES[setup.stage];
     setup = { ...setup, rainbow: st.rules === 'rainbow', battle: st.rules === 'battle', drink: st.rules === 'drink' };
   }
+  if (setup.drink) setup = { ...setup, rainbow: true };          // in Bevuta ci sono anche Monocolore e Full colori
   lastSetup = setup;
-  const mk = (name, cpu = false) => ({ name, cpu, scores: {}, extra: 0, rainbow: !!setup.rainbow, battle: !!setup.battle, drink: !!setup.drink, hp: MAX_HP, drunk: 0 });
+  const mk = (name, cpu = false) => ({ name, cpu, scores: {}, extra: 0, rainbow: !!setup.rainbow, battle: !!setup.battle, drink: !!setup.drink, hp: MAX_HP, drunk: 0, drinks: [] });
   const players = [mk(setup.name1 || (setup.mode === 'duo' ? 'Giocatore 1' : profileName() || 'Tu'))];
   let level = setup.level, maxRolls = 3, adv = null;
   if (setup.mode === 'cpu') players.push(mk('Tziu Gonario', true));
@@ -1053,23 +1073,39 @@ function commit(id) {
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
   let ko = false;
   if (G.drink) {
+    G.players.forEach(q => { q.drinks ||= []; });
     const target = battleTarget(p);
     const g = CAT[id].face ? 0 : glassesFor(id, sc) * (doubled ? 2 : 1);
-    let sober = 0;
-    if (CAT[id].face && sc >= CAT[id].face * 3) sober += 1;            // pane carasau e casu
-    if (!hadBonus && bonusOf(p) > 0) sober += 2;
     p.tempFx = 0;
-    if (sober && p.drunk > 0) {
+    // spuntini: 3 uguali pane carasau, 4 culurgiones, 5 casu marzu; il bonus vale la salsiccia
+    const snacks = [];
+    if (CAT[id].face) {
+      const n = counts(G.dice)[CAT[id].face];
+      if (n >= 5) snacks.push('casu'); else if (n >= 4) snacks.push('culurgiones'); else if (n >= 3) snacks.push('pane');
+    }
+    if (!hadBonus && bonusOf(p) > 0) snacks.push('salsiccia');
+    if (snacks.length) {
       const was = p.drunk;
+      const sober = snacks.reduce((a, k) => a + SNACKS[k].sober, 0);
       p.drunk = Math.max(0, p.drunk - sober);
-      msg = `${p.name} mangia pane carasau e casu: ${was - p.drunk === 1 ? 'un bicchiere smaltito' : 'due bicchieri smaltiti'}!`;
+      p.drinks.length = p.drunk;
+      const names = snacks.map(k => SNACKS[k].name).join(' e ');
+      msg = was > p.drunk ? `${p.name} mangia ${names}: ${was - p.drunk === 1 ? 'un bicchiere smaltito' : `${was - p.drunk} bicchieri smaltiti`}!` : `${p.name} si mangia ${names}. Bene, così regge meglio!`;
+      // il casu marzu è vivace: a volte (deciso dai dadi, uguale per tutti) ti senti male
+      if (snacks.includes('casu') && (sum(G.dice) * 7 + G.round) % 3 === 0) {
+        p.skip = true;
+        msg = `Il casu marzu era troppo vivace: ${p.name} si sente male e salta il prossimo turno!`;
+      }
     }
     if (g && target !== p) {
       const take = Math.min(g, GLASSES - target.drunk);
+      const dk = DRINK_OF[id] || 'vino', drink = DRINKS[dk];
       target.drunk += take;
+      for (let k = 0; k < take; k++) target.drinks.push(dk);
       if (shakesFor(id)) target.tempFx = 1;
-      drinkFx(G.players.indexOf(target), take);
-      msg = take >= 2 ? `${target.name} beve due bicchieri a tzoccu! Glu glu glu…` : `${target.name} beve un bicchiere a tzoccu! ${pick(SARDO.ubriaco).split('|')[0]}`;
+      if (dk === 'filu') target.tempFx = Math.max(target.tempFx || 0, 3 - target.drunk);   // filu 'e ferru: vista doppia subito
+      drinkFx(G.players.indexOf(target), take, dk);
+      msg = take >= 2 ? `${target.name} beve ${drink.emoji} ${drink.name}: due bicchieri a tzoccu! Glu glu glu…` : `${target.name} beve ${drink.emoji} ${drink.name} a tzoccu! ${pick(SARDO.ubriaco).split('|')[0]}`;
       if (target.drunk >= GLASSES) {
         target.out = true;
         msg = `${target.name} è cottu! ${SARDO.cottu[0].split('|')[0]}`;
@@ -1114,7 +1150,7 @@ function commit(id) {
   if (G.round > G.rounds) { render(); return endGame(); }
   // Bevuta: brindisi fissi, uguali per tutti (anche online)
   if (G.drink && G.round !== roundBefore && SALUDE_ROUNDS.includes(G.round)) {
-    alive().forEach(q => { q.drunk = Math.min(GLASSES - 1, q.drunk + 1); });
+    alive().forEach(q => { if (q.drunk < GLASSES - 1) { q.drunk++; q.drinks.push('vino'); } });
     G.players.forEach((q, j) => { if (!q.out) drinkFx(j, 1); });
     setTimeout(() => { say('Salude! Tziu Gonario offre un brindisi a tutti: un bicchiere a testa!'); cameo('A sa salude!|Alla salute!', 'cheer', true, 'g-vino'); }, 500);
   }
@@ -1309,20 +1345,45 @@ function cheerChip(j) {
 }
 
 // Bevuta: un bicchiere si svuota sotto il nome, con un "glu glu"
-function drinkFx(j, n) {
+function drinkFx(j, n, dk = 'vino') {
   const chip = document.querySelector(`#players .chip[data-p="${j}"]`);
   if (!chip) return;
   chip.classList.remove('gulp'); void chip.offsetWidth; chip.classList.add('gulp');
   const r = chip.getBoundingClientRect();
   const d = document.createElement('div');
   d.className = 'score-pop big hit';
-  d.textContent = n >= 2 ? '🍷🍷 glu glu!' : '🍷 glu!';
+  const em = DRINKS[dk]?.emoji || '🍷';
+  d.textContent = n >= 2 ? `${em}${em} glu glu!` : `${em} glu!`;
   d.style.left = `${Math.round(r.left + r.width / 2)}px`;
   d.style.top = `${Math.round(r.top + r.height / 2)}px`;
   document.body.appendChild(d);
   setTimeout(() => d.remove(), 1200);
   Sound.gulp(n);
   haptic([20, 40, 20, 40, 20]);
+}
+
+// Bevuta: "Offro io!" — una volta per partita un giro di Ichnusa per tutti, te compreso
+function doGiro(idx) {
+  const p = G.players[idx];
+  if (!p || p.giroUsed) return;
+  p.giroUsed = true;
+  G.players.forEach((q, j) => {
+    if (q.out) return;
+    q.drunk = Math.min(GLASSES, q.drunk + 1);
+    q.drinks.push('ichnusa');
+    drinkFx(j, 1, 'ichnusa');
+    if (q.drunk >= GLASSES) q.out = true;
+  });
+  say(`${p.name}: «Offro io! Un giro di Ichnusa per tutti!»`);
+  cameo('Aaaaah, bella frisca!|Aaah, bella fresca!', 'cheer', true, 'g-birra');
+  if (alive().length <= 1) { busy = true; render(); setTimeout(() => { busy = false; endGame(); }, 1200); return; }
+  if (G.players[G.cur].out) { busy = false; G.sel = null; nextTurn(); if (G.round > G.rounds) { render(); return endGame(); } startTurn(); return; }
+  render();
+}
+function offerGiro() {
+  if (!G?.drink || busy || !myTurn() || curP().giroUsed) return;
+  if (G.online) netSend({ t: 'giro', idx: G.cur });
+  doGiro(G.cur);
 }
 
 // Bevuta: quanto è brillo chi sta giocando su QUESTO telefono (0-4)
@@ -1339,6 +1400,25 @@ function applyDrunkFx() {
   wobbleCup(lvl >= 2 && myTurn() && !busy && G.rollsLeft > 0);
 }
 
+// Vista doppia: compaiono dadi fantasma (toccarli non serve a niente)
+function renderGhosts() {
+  const tray = $('#tray');
+  const want = drunkLevel() >= 3 && G.hasRolled ? (drunkLevel() >= 4 ? 3 : 2) : 0;
+  const have = tray.querySelectorAll('.ghost').length;
+  if (have === want) return;
+  tray.querySelectorAll('.ghost').forEach(g => g.remove());
+  tray.querySelectorAll('.die').forEach((d, i) => { d.style.order = String(i * 2); });   // i fantasmi si infilano tra i dadi veri
+  for (let k = 0; k < want; k++) {
+    const b = document.createElement('button');
+    b.className = 'die ghost';
+    b.innerHTML = cubeHTML() + '<span class="shadow"></span>';
+    b.style.order = String(1 + k * 2);
+    setDie(b, rnd6());
+    b.addEventListener('click', e => { e.stopPropagation(); say(pick(['Hic! Quel dado non esiste, bellu meu.', 'Era un dado fantasma! Il vino ti fa vedere doppio.', 'Mi\'… stai toccando l\'aria!'])); mood('smirk', 1500); });
+    tray.appendChild(b);
+  }
+}
+
 // Il bossolo ubriaco: ondeggia e bisogna lanciare quando è al centro
 const CupWobble = { on: false, t0: 0, raf: 0, period: 1600, amp: 46 };
 function wobbleCup(on) {
@@ -1351,7 +1431,7 @@ function wobbleCup(on) {
   if (!on) { cup.style.translate = ''; return; }
   CupWobble.t0 = performance.now();
   CupWobble.period = 1700 - drunkLevel() * 180;
-  const ta = $('.table-area').getBoundingClientRect(), cr = cup.getBoundingClientRect();
+  const ta = $('.cup-zone').getBoundingClientRect(), cr = cup.getBoundingClientRect();
   $('#cupAim').style.left = `${Math.round(cr.left - ta.left + cr.width / 2 - CupWobble.amp)}px`;
   const step = t => {
     if (!CupWobble.on) return;
@@ -1550,7 +1630,7 @@ function renderBoard(p, canAct) {
     else if (rolled()) {
       const v = scoreFor(id, G.dice, joker, G.colors);
       val.textContent = G.drink && v
-        ? (CAT[id].face ? (v >= CAT[id].face * 3 ? `${v} 🍞` : v) : glassesFor(id, v) ? `${'🍷'.repeat(glassesFor(id, v))}` : v)
+        ? (CAT[id].face ? (v >= CAT[id].face * 3 ? `${v} 🍞` : v) : glassesFor(id, v) ? `${(DRINKS[DRINK_OF[id]]?.emoji || '🍷').repeat(glassesFor(id, v))}` : v)
         : G.battle && v ? (CAT[id].face ? `+${Math.min(v, maxHpOf(p) - p.hp)}` : `−${v}`) : v;
       t.classList.add('preview');
       if (!v) t.classList.add('zero');
@@ -1591,7 +1671,14 @@ function render() {
       ch.classList.toggle('low', q.hp <= 30);
     }
     if (G.drink) {
-      ch.querySelectorAll('.glasses i').forEach((gl, k) => gl.classList.toggle('empty', k >= GLASSES - q.drunk));
+      ch.querySelectorAll('.glasses i').forEach((gl, k) => {
+        const empty = k >= GLASSES - q.drunk;
+        gl.classList.toggle('empty', empty);
+        const dk = empty ? (q.drinks || [])[GLASSES - 1 - k] : null;
+        gl.style.setProperty('--res', dk ? DRINKS[dk].color : 'transparent');
+        gl.title = dk ? DRINKS[dk].name : '';
+      });
+      ch.dataset.drunk = q.drunk;
       ch.classList.toggle('low', q.drunk >= 3);
     }
   });
@@ -1647,8 +1734,15 @@ function render() {
 
   renderBoard(p, canAct);
   applyDrunkFx();
+  renderGhosts();
+  const gb = $('#btnGiro');
+  gb.hidden = !G.drink || !isMe(p) || !!p.giroUsed || !!p.out;
+  gb.disabled = !canAct;
+  document.body.classList.toggle('tavern', !!G.drink && $('#game').classList.contains('active'));
+  document.body.style.setProperty('--dim', G.drink ? (Math.min(4, p.drunk) * 0.09).toFixed(2) : '0');
   const tp = $('.mentor [data-mentor]'), ta = tp.querySelector('.turn-ava');
   tp.classList.toggle('player', !!p.ava);
+  tp.dataset.drunk = G.drink ? Math.min(4, p.drunk) : 0;
   if (p.ava && ta.getAttribute('src') !== p.ava) {
     ta.setAttribute('src', p.ava);
     tp.classList.remove('pop'); void tp.offsetWidth; tp.classList.add('pop');
@@ -1733,7 +1827,7 @@ const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;'
 const PEER_PREFIX = 'yatzy-tziugonario-';
 const PEERJS_URL = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
 const MAX_ONLINE = 4;
-const RELAY = new Set(['roll', 'hold', 'sel', 'commit', 'snap', 'emote']);
+const RELAY = new Set(['roll', 'hold', 'sel', 'commit', 'snap', 'emote', 'giro']);
 const NET = { peer: null, role: null, code: null, host: null, open: false, guests: [], active: [], lobby: [], queue: Promise.resolve(), waitTimer: null };
 const EMOTES = ['Ajò!|Dai!', 'Mischinu!|Poverino!', 'Eja!|Sì!', 'Ma bae!|Ma va\'!', 'Ses prus lentu de una tostoine.|Sei più lento di una tartaruga.', 'A chent\'annos!|Cent\'anni!'];
 
@@ -1915,7 +2009,7 @@ function handleRejoin(g, msg) {
 function fullState() {
   const keys = ['cur', 'round', 'rounds', 'rainbow', 'battle', 'drink', 'maxRolls', 'dice', 'held', 'colors', 'rollsLeft', 'rollsTotal', 'hasRolled', 'sel'];
   const st = Object.fromEntries(keys.map(k => [k, G[k]]));
-  st.players = G.players.map(q => ({ name: q.name, scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, ava: q.ava, charId: q.charId, rainbow: q.rainbow, battle: q.battle, drink: q.drink, drunk: q.drunk, tempFx: q.tempFx || 0 }));
+  st.players = G.players.map(q => ({ name: q.name, scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, ava: q.ava, charId: q.charId, rainbow: q.rainbow, battle: q.battle, drink: q.drink, drunk: q.drunk, drinks: q.drinks || [], tempFx: q.tempFx || 0, skip: !!q.skip, giroUsed: !!q.giroUsed }));
   return st;
 }
 
@@ -2047,7 +2141,7 @@ function startOnline(rules, names, me, chars = []) {
 }
 
 function snapshot() {
-  return { players: G.players.map(q => ({ scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, drunk: q.drunk || 0, tempFx: q.tempFx || 0 })), cur: G.cur, round: G.round };
+  return { players: G.players.map(q => ({ scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, drunk: q.drunk || 0, drinks: q.drinks || [], tempFx: q.tempFx || 0, skip: !!q.skip, giroUsed: !!q.giroUsed })), cur: G.cur, round: G.round };
 }
 
 async function applyAction(msg) {
@@ -2076,6 +2170,9 @@ async function applyAction(msg) {
       msg.s.players.forEach((q, i) => { if (G.players[i]) Object.assign(G.players[i], q); });
       if (G.cur !== msg.s.cur || G.round !== msg.s.round) { G.cur = msg.s.cur; G.round = msg.s.round; }
       render();
+      break;
+    case 'giro':
+      doGiro(msg.idx);
       break;
     case 'emote':
       say(`${String(msg.name || 'Un amico').slice(0, 14)}: ${String(msg.text || '').slice(0, 120)}`);
@@ -2364,7 +2461,7 @@ function show(id) {
   $('#endOverlay').hidden = true;
   $('#facePick').hidden = true;
   if (id !== 'game' && TUT.on) endTutorial();
-  if (id !== 'game') { for (let k = 1; k <= 4; k++) document.body.classList.remove(`drunk-${k}`); wobbleCup(false); }
+  if (id !== 'game') { for (let k = 1; k <= 4; k++) document.body.classList.remove(`drunk-${k}`); wobbleCup(false); document.body.classList.remove('tavern'); }
   if (id === 'menu') { refreshMenu(); refreshMenuProfile(); }
   if (id === 'game') Music.play(G?.adv && stageOf()?.id === 'mammuthones' ? 'notte' : 'bgm');
   else if (id !== 'game') Music.play('bgm');
@@ -2474,6 +2571,7 @@ function init() {
   initSeg('segCharm', v => { $('#charmDesc').textContent = v ? CHARMS[v].desc + ' Una volta per partita.' : ''; });
   $('#btnPlayStage').addEventListener('click', startStage);
   $('#btnCharm').addEventListener('click', useCharm);
+  $('#btnGiro').addEventListener('click', offerGiro);
   $('#btnNext').addEventListener('click', () => openBrief(G.adv.stage + 1));
   $('#btnSound').addEventListener('click', toggleSound);
   $('#btnSound2').addEventListener('click', () => {
@@ -2503,7 +2601,7 @@ function init() {
   initSeg('segRules', v => {
     $('#rulesDesc').textContent = {
       rainbow: 'Ogni dado ha un colore: rubino, smeraldo o zaffiro. Due caselle in più: Monocolore (40) e Full di colori (20). 15 turni.',
-      drink: 'Ognuno ha 5 bicchieri di vino. Tris, Poker, Full, Scale e Chance alta fanno bere l\'avversario (lo Yatzy due bicchieri a tzoccu). La parte alta fa smaltire con pane carasau e casu. Più bevi, più la vista si appanna e il bossolo balla. Chi finisce i bicchieri è cottu!',
+      drink: 'Dadi colorati e 5 bicchieri a testa. Ogni combinazione fa bere all\'avversario una bevanda sarda: Ichnusa, vino nieddu, mirto, Vermentino, Cannonau e, per lo Yatzy, filu \'e ferru. La parte alta fa smaltire con pane carasau, culurgiones, casu marzu e salsiccia. Una volta puoi offrire un giro a tutti. Chi finisce i bicchieri è cottu!',
       battle: 'Si parte da 150 punti vita. La parte alta cura te, la parte bassa attacca l\'avversario. Vince chi lo manda a zero. Si gioca in due (da solo diventa contro Tziu Gonario).',
     }[v] || '';
   });

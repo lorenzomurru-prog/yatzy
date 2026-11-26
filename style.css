@@ -482,7 +482,7 @@ tr:has(.cell.pickable) .lbl { cursor: pointer; }
 
 /* ── Bossolo ── */
 .cup {
-  position: absolute; right: 16px; bottom: 62px; z-index: 3;
+  position: absolute; right: 4px; top: 2px; z-index: 3;
   width: 42px; height: 50px; padding: 0; border: 0; background: none;
   transform-origin: 50% 85%;
   filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .45));
@@ -506,7 +506,7 @@ tr:has(.cell.pickable) .lbl { cursor: pointer; }
 }
 .tray.in-cup .die.blank { opacity: 0; transform: scale(.6); }
 .table-area { padding-right: 12px; }
-@media (min-width: 900px) { .cup { width: 60px; height: 72px; right: 24px; bottom: 66px; } }
+@media (min-width: 900px) { .cup { width: 60px; height: 72px; right: 12px; top: 0; } }
 
 /* ── Mastro Ampolla più grande in partita ── */
 .mentor { min-height: 92px; }
@@ -771,7 +771,8 @@ body.lightfx .table-area, body.lightfx .board { filter: blur(.4px) !important; }
 
 /* bossolo ubriaco */
 .cup.wobble { animation: none; transition: none; cursor: pointer; }
-.cup-aim { position: absolute; bottom: 52px; width: 0; pointer-events: none; z-index: 2; }
+.cup-zone { position: relative; height: 0; }
+.cup-aim { position: absolute; top: -8px; width: 0; pointer-events: none; z-index: 2; }
 .cup-aim i { display: block; width: 4px; height: 70px; border-radius: 2px; translate: -50% 0; background: linear-gradient(180deg, transparent, var(--green), transparent); box-shadow: 0 0 10px var(--green); }
 .cup-aim span { display: block; width: max-content; translate: -50% 0; font-size: 12px; font-weight: 700; color: var(--green); margin-top: 2px; }
 
@@ -795,6 +796,62 @@ body.lightfx .table-area, body.lightfx .board { filter: blur(.4px) !important; }
 }
 @keyframes splash { 0% { transform: scale(.3); opacity: 0; } 8% { transform: scale(1.08); opacity: 1; } 15% { transform: scale(1); } 70% { opacity: .9; } 100% { opacity: 0; } }
 @keyframes drip { 0% { transform: scaleY(0); transform-origin: top; } 30% { transform: scaleY(.2); } 100% { transform: scaleY(1); transform-origin: top; } }
+
+/* Bevuta: residuo della bevanda nei bicchieri vuoti */
+.glasses i.empty { background: linear-gradient(0deg, var(--res, transparent) 0 22%, rgba(246, 234, 210, .06) 22%); }
+
+/* Offro io! */
+.btn.giro { width: 100%; margin-top: 10px; min-height: 44px; font-size: 15px; border-color: #e8b33a; background: rgba(232, 179, 58, .12); color: #ffe39a; }
+
+/* Dadi fantasma (vista doppia) */
+.die.ghost { --s: min(10vw, 50px); opacity: .42; filter: blur(1.4px); margin: 0 -8px; pointer-events: auto; animation: ghostFloat 2.2s ease-in-out infinite; }
+@keyframes ghostFloat { 50% { transform: translate(3px, -4px) rotate(6deg); } }
+body.drunk-3 .tray .die:not(.ghost), body.drunk-4 .tray .die:not(.ghost) { --s: min(13vw, 64px); }
+body.drunk-3 .tray, body.drunk-4 .tray { gap: min(1.5vw, 8px); }
+
+/* Il tuo personaggio si ubriaca */
+.chip[data-drunk="1"] .chip-ava img, .portrait.player[data-drunk="1"] .turn-ava { filter: saturate(1.15) sepia(.12) hue-rotate(-8deg); }
+.chip[data-drunk="2"] .chip-ava img, .portrait.player[data-drunk="2"] .turn-ava { filter: saturate(1.35) sepia(.22) hue-rotate(-14deg) brightness(1.03); }
+.chip[data-drunk="3"] .chip-ava img, .portrait.player[data-drunk="3"] .turn-ava { filter: saturate(1.6) sepia(.32) hue-rotate(-20deg) brightness(1.05); }
+.chip[data-drunk="4"] .chip-ava img, .portrait.player[data-drunk="4"] .turn-ava { filter: saturate(1.9) sepia(.42) hue-rotate(-26deg) brightness(1.07) contrast(1.05); }
+.chip[data-drunk="2"] .chip-ava, .chip[data-drunk="3"] .chip-ava, .chip[data-drunk="4"] .chip-ava { animation: tipsyAva 2.6s ease-in-out infinite; }
+@keyframes tipsyAva { 50% { transform: rotate(10deg) translateX(1px); } }
+.portrait.player[data-drunk="2"] .turn-ava { animation: tipsyTurn 3.6s ease-in-out infinite; }
+.portrait.player[data-drunk="3"] .turn-ava { animation: tipsyTurn 2.8s ease-in-out infinite; }
+.portrait.player[data-drunk="4"] .turn-ava { animation: tipsyTurn 2.1s ease-in-out infinite; }
+@keyframes tipsyTurn { 0%, 100% { transform: rotate(-4deg) translateX(-3%); } 50% { transform: rotate(5deg) translateX(3%); } }
+.portrait.player.hic .turn-ava { animation: hicJump .45s cubic-bezier(.3, 1.8, .5, 1); }
+
+/* Osteria di notte */
+body.tavern #game.screen {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 8%, rgba(255, 190, 90, .18), transparent 70%),
+    linear-gradient(180deg, #24120c, #140805);
+}
+body.tavern .table-area {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 35%, rgba(255, 196, 110, .22), transparent 72%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .18) 0 2px, transparent 2px 74px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 9px),
+    linear-gradient(180deg, #6b4426, #4a2c17);
+  border-color: rgba(255, 196, 110, .35);
+}
+body.tavern .table-area::before {
+  content: "🏮"; position: absolute; top: 6px; left: 12px; font-size: 22px;
+  background: none; inset: auto; filter: drop-shadow(0 0 10px rgba(255, 170, 60, .9));
+  animation: lantern 3s ease-in-out infinite;
+}
+@keyframes lantern { 0%, 100% { transform: rotate(-6deg); opacity: 1; } 40% { opacity: .82; } 50% { transform: rotate(6deg); } 70% { opacity: .95; } }
+body.tavern .table-area::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(ellipse at 50% 30%, transparent 30%, rgba(0, 0, 0, calc(.25 + var(--dim, 0))) 100%);
+  animation: flicker 4s steps(1) infinite;
+}
+@keyframes flicker { 0%, 100% { opacity: 1; } 47% { opacity: .85; } 49% { opacity: 1; } 73% { opacity: .9; } }
+body.tavern #game .game-grid::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background: rgba(10, 4, 2, var(--dim, 0));
+}
 
 /* ── Fine partita ── */
 .overlay {
