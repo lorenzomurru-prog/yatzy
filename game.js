@@ -30,6 +30,16 @@ const UPPER = CATS.filter(c => c.face);
 const LOWER = [...CATS.filter(c => !c.face), ...RAINBOW_CATS];
 const BONUS_AT = 63, BONUS = 35, CINQ_BONUS = 100;
 const MAX_HP = 150, BATTLE_BONUS_HEAL = 35, BATTLE_EXTRA_HIT = 50;
+// Bevuta: 5 bicchieri a testa. La parte bassa fa bere l'avversario, la parte alta fa smaltire.
+const GLASSES = 5, SALUDE_ROUNDS = [4, 8, 12];
+function glassesFor(id, sc) {
+  if (!sc) return 0;
+  if (id === 'cinq') return 2;                                     // Yatzy: due bicchieri a tzoccu
+  if (['tris', 'poker', 'full', 'small', 'large'].includes(id)) return 1;
+  if (id === 'chance') return sc >= 25 ? 1 : 0;
+  return 0;
+}
+const shakesFor = id => ['full', 'small', 'large'].includes(id);   // Full e Scale: il tavolo gira al turno dopo
 const catsOf = p => (p.rainbow ? [...CATS, ...RAINBOW_CATS] : CATS);
 
 function counts(d) {
@@ -177,6 +187,12 @@ function utility(id, sc, p) {
 function baseUtility(id, sc, p) {
   let u = sc;
   const cat = CAT[id];
+  if (p.drink) {
+    // Bevuta: conta far bere l'altro, e smaltire se si è già brilli
+    if (cat.face) return (sc >= cat.face * 3 ? (p.drunk > 0 ? 22 : 6) : 0) + sc * 0.3 + (upperSum(p) < BONUS_AT && sc >= cat.face * 3 ? 4 : 0);
+    const g = glassesFor(id, sc);
+    return g * 26 + (g && (p._oppDrunk ?? 0) + g >= GLASSES ? 300 : 0) + sc * 0.15 - (sc === 0 ? ({ cinq: 10, large: 5, small: 3, full: 2 }[id] || 0) : 0) - (id === 'chance' ? 6 : 0);
+  }
   if (p.battle) {
     // Battaglia: la parte alta cura (utile solo se si è feriti), la parte bassa attacca
     if (cat.face) {
@@ -303,6 +319,11 @@ const Sound = {
     this.tone(330, t, 0.25, 'sine', 0.12);
     this.tone(247, t + 0.12, 0.35, 'sine', 0.12);
   },
+  gulp(n = 1) {
+    const ctx = this.ensure(); if (!ctx) return;
+    const t = ctx.currentTime;
+    for (let k = 0; k < 3 * n; k++) this.tone(180 + Math.random() * 60, t + k * 0.16, 0.12, 'sine', 0.16);
+  },
   hit(power = 20) {
     const ctx = this.ensure(); if (!ctx) return;
     const t = ctx.currentTime;
@@ -321,7 +342,7 @@ const Sound = {
 
 /* ───────────── Opzioni ───────────── */
 
-const OPTS = Object.assign({ fast: false, big: false, tease: true, music: true },
+const OPTS = Object.assign({ fast: false, big: false, tease: true, music: true, lightfx: false },
   (() => { try { return JSON.parse(localStorage.getItem('cd.opts')) || {}; } catch { return {}; } })());
 const saveOpts = () => localStorage.setItem('cd.opts', JSON.stringify(OPTS));
 const T = ms => Math.round(ms * (OPTS.fast ? 0.45 : 1));   // tempi delle animazioni
@@ -641,7 +662,7 @@ const isMe = p => !p.cpu && (!G.online || G.players.indexOf(p) === G.online.me);
 const myTurn = () => isMe(curP());
 const alive = () => G.players.filter(q => !q.out);
 // Battaglia: si attacca l'avversario ancora in gioco con più punti vita
-const battleTarget = p => G.players.filter(q => q !== p && !q.out).sort((a, b) => b.hp - a.hp)[0] || p;
+const battleTarget = p => G.players.filter(q => q !== p && !q.out).sort((a, b) => (G.drink ? a.drunk - b.drunk : b.hp - a.hp))[0] || p;
 // Passa al prossimo giocatore ancora in gioco (salta chi è fuori o si è scollegato)
 function nextTurn() {
   const n = G.players.length;
@@ -662,7 +683,7 @@ function newGame(setup) {
     setup = { ...setup, rainbow: st.rules === 'rainbow', battle: st.rules === 'battle' };
   }
   lastSetup = setup;
-  const mk = (name, cpu = false) => ({ name, cpu, scores: {}, extra: 0, rainbow: !!setup.rainbow, battle: !!setup.battle, hp: MAX_HP });
+  const mk = (name, cpu = false) => ({ name, cpu, scores: {}, extra: 0, rainbow: !!setup.rainbow, battle: !!setup.battle, drink: !!setup.drink, hp: MAX_HP, drunk: 0 });
   const players = [mk(setup.name1 || (setup.mode === 'duo' ? 'Giocatore 1' : profileName() || 'Tu'))];
   let level = setup.level, maxRolls = 3, adv = null;
   if (setup.mode === 'cpu') players.push(mk('Tziu Gonario', true));
@@ -692,7 +713,7 @@ function newGame(setup) {
     maxRolls = st.rolls || 3;
     adv = { stage: setup.stage, charm: setup.charm || null, charmUsed: false, armed: null, double: false };
   }
-  G = { players, cur: 0, round: 1, rounds: catsOf(players[0]).length, rainbow: !!setup.rainbow, battle: !!setup.battle, colors: ['', '', '', '', ''], level, maxRolls, adv, dice: [0, 0, 0, 0, 0], held: [false, false, false, false, false], rollsLeft: maxRolls, rollsTotal: maxRolls, hasRolled: false, sel: null,
+  G = { players, cur: 0, round: 1, rounds: catsOf(players[0]).length, rainbow: !!setup.rainbow, battle: !!setup.battle, drink: !!setup.drink, colors: ['', '', '', '', ''], level, maxRolls, adv, dice: [0, 0, 0, 0, 0], held: [false, false, false, false, false], rollsLeft: maxRolls, rollsTotal: maxRolls, hasRolled: false, sel: null,
     online: setup.mode === 'online' ? { me: setup.me } : null };
   show('game');
   buildSheet();
@@ -858,14 +879,23 @@ function react() {
 async function humanRoll() {
   if (busy || !myTurn() || G.rollsLeft === 0) return;
   if (G.adv) G.adv.armed = null;
-  if (G.online) {
-    // decido qui i valori e li mando subito, così i dadi rotolano insieme sui due telefoni
-    const preset = { dice: G.dice.map((v, i) => (G.held[i] ? v : rnd6())), colors: G.colors.map((c, i) => (G.held[i] || !G.rainbow ? c : rndGem())) };
-    netSend({ t: 'roll', held: G.held, ...preset });
-    await doRoll(preset);
-    return;
+  let note = null;
+  const lvl = drunkLevel();
+  // Bevuta, mano malferma: un dado tenuto può scivolare
+  if (lvl >= 4 && G.hasRolled && Math.random() < 0.4) {
+    const heldIdx = G.held.map((h, i) => (h ? i : -1)).filter(i => i >= 0);
+    if (heldIdx.length) { G.held[pick(heldIdx)] = false; note = 'Ops! Mano malferma: un dado tenuto ti è scivolato.'; }
   }
-  await doRoll();
+  const preset = { dice: G.dice.map((v, i) => (G.held[i] ? v : rnd6())), colors: G.colors.map((c, i) => (G.held[i] || !G.rainbow ? c : rndGem())) };
+  // Bevuta, bossolo ubriaco: se non lanci quando è al centro, un dado cade dal tavolo e conta 1
+  if (CupWobble.on && !cupCentered()) {
+    const free = G.held.map((h, i) => (h ? -1 : i)).filter(i => i >= 0);
+    if (free.length) { preset.dice[pick(free)] = 1; note = 'Hai lanciato storto! Un dado è caduto dal tavolo: conta 1.'; }
+  }
+  wobbleCup(false);
+  if (G.online) netSend({ t: 'roll', held: G.held, ...preset });   // valori decisi qui, uguali per tutti
+  await doRoll(preset);
+  if (note) { say(note); mood('smirk', 2000); }
 }
 
 async function dieClick(i) {
@@ -994,6 +1024,33 @@ function commit(id) {
   else if (isMe(p) && sc >= 30) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
   let ko = false;
+  if (G.drink) {
+    const target = battleTarget(p);
+    const g = CAT[id].face ? 0 : glassesFor(id, sc) * (doubled ? 2 : 1);
+    let sober = 0;
+    if (CAT[id].face && sc >= CAT[id].face * 3) sober += 1;            // pane carasau e casu
+    if (!hadBonus && bonusOf(p) > 0) sober += 2;
+    p.tempFx = 0;
+    if (sober && p.drunk > 0) {
+      const was = p.drunk;
+      p.drunk = Math.max(0, p.drunk - sober);
+      msg = `${p.name} mangia pane carasau e casu: ${was - p.drunk === 1 ? 'un bicchiere smaltito' : 'due bicchieri smaltiti'}!`;
+    }
+    if (g && target !== p) {
+      const take = Math.min(g, GLASSES - target.drunk);
+      target.drunk += take;
+      if (shakesFor(id)) target.tempFx = 1;
+      drinkFx(G.players.indexOf(target), take);
+      msg = take >= 2 ? `${target.name} beve due bicchieri a tzoccu! Glu glu glu…` : `${target.name} beve un bicchiere a tzoccu! ${pick(SARDO.ubriaco).split('|')[0]}`;
+      if (target.drunk >= GLASSES) {
+        target.out = true;
+        msg = `${target.name} è cottu! ${SARDO.cottu[0].split('|')[0]}`;
+        mood('wow', 3000);
+        cameo(SARDO.cottu[0], 'cheer', true, 'g-ride');
+        ko = alive().length <= 1;
+      } else if (target.drunk >= 3) cameo(pick(SARDO.ubriaco), 'cheer', false, 'g-barcolla');
+    }
+  }
   if (G.battle) {
     const opp = battleTarget(p);
     let heal = 0, hit = 0;
@@ -1024,8 +1081,15 @@ function commit(id) {
   haptic(sc ? (G.battle && !CAT[id].face ? [30, 30, 60] : 18) : [10, 40, 10]);
   if (ko) { busy = true; render(); setTimeout(() => { busy = false; endGame(); }, 900); return; }
 
+  const roundBefore = G.round;
   nextTurn();
   if (G.round > G.rounds) { render(); return endGame(); }
+  // Bevuta: brindisi fissi, uguali per tutti (anche online)
+  if (G.drink && G.round !== roundBefore && SALUDE_ROUNDS.includes(G.round)) {
+    alive().forEach(q => { q.drunk = Math.min(GLASSES - 1, q.drunk + 1); });
+    G.players.forEach((q, j) => { if (!q.out) drinkFx(j, 1); });
+    setTimeout(() => { say('Salude! Tziu Gonario offre un brindisi a tutti: un bicchiere a testa!'); cameo('A sa salude!|Alla salute!', 'cheer', true, 'g-vino'); }, 500);
+  }
   save();
   setTimeout(() => startTurn(), msg ? 900 : 450);
   render();
@@ -1035,6 +1099,7 @@ async function cpuTurn() {
   busy = true;
   const p = curP();
   if (G.battle) p._oppHp = battleTarget(p).hp;
+  if (G.drink) p._oppDrunk = battleTarget(p).drunk;
   render();
   await sleep(T(900));
   while (G.rollsLeft > 0) {
@@ -1076,8 +1141,11 @@ function endGame() {
   else if (totals.every(t => t === top)) title = 'Pareggio!';
   else title = `Ha vinto ${ps[totals.indexOf(top)].name}!`;
   let note = best > prevBest ? `Nuovo record personale: ${best}!` : `Il tuo record: ${best}`;
-  if (G.battle) {
+  if (G.drink) {
     const w = ps[totals.indexOf(top)];
+    note = ps.some(q => q.out) ? `${ps.filter(q => q.out).map(q => q.name).join(' e ')} è finito cottu. ${w.name} regge ancora!` : `Turni finiti: ${w.name} ha bevuto meno di tutti.`;
+  }
+  if (G.battle) {
     note = totals.includes(0) ? `${ps[totals.indexOf(0)].name} è rimasto senza punti vita.` : `Caselle finite: ${w.name} ha più punti vita.`;
     if (totals.every(t => t === top)) note = 'Stessi punti vita: la battaglia finisce alla pari.';
   }
@@ -1112,7 +1180,7 @@ function endGame() {
 
   $('#endTitle').textContent = title;
   $('#endScores').innerHTML = starsHtml + ps.map((p, i) =>
-    `<div class="end-row ${totals[i] === top ? 'win' : ''}"><span>${p.ava ? `<i class="chip-ava">${avatarHTML(p.ava)}</i>` : ''}${esc(p.name)}</span><b>${totals[i]}${G.battle ? ' <small>PV</small>' : ''}</b></div>`).join('');
+    `<div class="end-row ${totals[i] === top ? 'win' : ''}"><span>${p.ava ? `<i class="chip-ava">${avatarHTML(p.ava)}</i>` : ''}${esc(p.name)}</span><b>${totals[i]}${G.battle ? ' <small>PV</small>' : G.drink ? ' <small>🍷 rimasti</small>' : ''}</b></div>`).join('');
   $('#endNote').textContent = note;
   Sound.fanfare();
   const won = G.adv ? title === 'Missione compiuta!' : isMe(ps[totals.indexOf(top)]);
@@ -1201,7 +1269,7 @@ const haptic = pattern => { try { if (navigator.userActivation?.hasBeenActive !=
 const rivalSrc = img => `img/rivali/${img}.webp`;
 const avatarHTML = (src, alt = '') => `<img class="ava" src="${src}" alt="${alt}" draggable="false">`;
 
-const shownTotal = q => (G?.battle ? q.hp : totalOf(q));
+const shownTotal = q => (G?.drink ? GLASSES - q.drunk : G?.battle ? q.hp : totalOf(q));
 
 // Il tuo personaggio esulta accanto al nome
 function cheerChip(j) {
@@ -1211,6 +1279,61 @@ function cheerChip(j) {
   const tp = $('.mentor [data-mentor]');
   tp.classList.remove('cheer'); void tp.offsetWidth; tp.classList.add('cheer');
 }
+
+// Bevuta: un bicchiere si svuota sotto il nome, con un "glu glu"
+function drinkFx(j, n) {
+  const chip = document.querySelector(`#players .chip[data-p="${j}"]`);
+  if (!chip) return;
+  chip.classList.remove('gulp'); void chip.offsetWidth; chip.classList.add('gulp');
+  const r = chip.getBoundingClientRect();
+  const d = document.createElement('div');
+  d.className = 'score-pop big hit';
+  d.textContent = n >= 2 ? '🍷🍷 glu glu!' : '🍷 glu!';
+  d.style.left = `${Math.round(r.left + r.width / 2)}px`;
+  d.style.top = `${Math.round(r.top + r.height / 2)}px`;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1200);
+  Sound.gulp(n);
+  haptic([20, 40, 20, 40, 20]);
+}
+
+// Bevuta: quanto è brillo chi sta giocando su QUESTO telefono (0-4)
+function drunkLevel() {
+  if (!G?.drink || !$('#game').classList.contains('active')) return 0;
+  const p = curP();
+  if (!isMe(p) || p.out) return 0;
+  return Math.min(4, p.drunk + (p.tempFx || 0));
+}
+function applyDrunkFx() {
+  const lvl = drunkLevel();
+  for (let k = 1; k <= 4; k++) document.body.classList.toggle(`drunk-${k}`, lvl === k);
+  document.body.classList.toggle('lightfx', !!OPTS.lightfx);
+  wobbleCup(lvl >= 2 && myTurn() && !busy && G.rollsLeft > 0);
+}
+
+// Il bossolo ubriaco: ondeggia e bisogna lanciare quando è al centro
+const CupWobble = { on: false, t0: 0, raf: 0, period: 1600, amp: 46 };
+function wobbleCup(on) {
+  const cup = $('#cup');
+  if (on === CupWobble.on) return;
+  CupWobble.on = on;
+  cup.classList.toggle('wobble', on);
+  $('#cupAim').hidden = !on;
+  cancelAnimationFrame(CupWobble.raf);
+  if (!on) { cup.style.translate = ''; return; }
+  CupWobble.t0 = performance.now();
+  CupWobble.period = 1700 - drunkLevel() * 180;
+  const ta = $('.table-area').getBoundingClientRect(), cr = cup.getBoundingClientRect();
+  $('#cupAim').style.left = `${Math.round(cr.left - ta.left + cr.width / 2 - CupWobble.amp)}px`;
+  const step = t => {
+    if (!CupWobble.on) return;
+    const ph = Math.sin(((t - CupWobble.t0) / CupWobble.period) * Math.PI * 2);
+    cup.style.translate = `${Math.round(-CupWobble.amp + ph * CupWobble.amp)}px 0`;
+    CupWobble.raf = requestAnimationFrame(step);
+  };
+  CupWobble.raf = requestAnimationFrame(step);
+}
+const cupCentered = () => Math.abs(Math.sin(((performance.now() - CupWobble.t0) / CupWobble.period) * Math.PI * 2)) < 0.38;
 
 function battleFx(j, text, kind) {
   const chip = document.querySelector(`#players .chip[data-p="${j}"]`);
@@ -1347,7 +1470,7 @@ function buildSheet() {
   const row = c => `<tr data-id="${c.id}"><td class="lbl"><span>${c.label}</span><small>${c.hint}</small></td>${G.players.map((_, j) => `<td class="cell" data-p="${j}"></td>`).join('')}</tr>`;
   const sumRow = (cls, label) => `<tr class="sum ${cls}"><td class="lbl"><span>${label}</span></td>${G.players.map((_, j) => `<td data-p="${j}"></td>`).join('')}</tr>`;
   $('#players').innerHTML = G.players.map((q, j) =>
-    `<div class="chip${G.battle ? ' battle' : ''}" data-p="${j}"><span>${q.ava ? `<i class="chip-ava">${avatarHTML(q.ava)}</i>` : q.icon ? q.icon + ' ' : ''}${esc(q.name)}</span><b data-val="${shownTotal(q)}">${shownTotal(q)}</b>${G.battle ? '<div class="hp"><i></i></div>' : ''}</div>`).join('');
+    `<div class="chip${G.battle ? ' battle' : ''}${G.drink ? ' drink' : ''}" data-p="${j}"><span>${q.ava ? `<i class="chip-ava">${avatarHTML(q.ava)}</i>` : q.icon ? q.icon + ' ' : ''}${esc(q.name)}</span><b data-val="${shownTotal(q)}">${shownTotal(q)}</b>${G.battle ? '<div class="hp"><i></i></div>' : ''}${G.drink ? `<div class="glasses">${'<i></i>'.repeat(GLASSES)}</div>` : ''}</div>`).join('');
   buildBoard();
   $('#players').classList.toggle('many', G.players.length > 2);
   $('#sheet').className = 'sheet' + (two ? ' two' : '');
@@ -1398,7 +1521,9 @@ function renderBoard(p, canAct) {
     if (done) { t.classList.add('done'); val.textContent = p.scores[id]; if (!p.scores[id]) t.classList.add('zero'); }
     else if (rolled()) {
       const v = scoreFor(id, G.dice, joker, G.colors);
-      val.textContent = G.battle && v ? (CAT[id].face ? `+${Math.min(v, maxHpOf(p) - p.hp)}` : `−${v}`) : v;
+      val.textContent = G.drink && v
+        ? (CAT[id].face ? (v >= CAT[id].face * 3 ? `${v} 🍞` : v) : glassesFor(id, v) ? `${'🍷'.repeat(glassesFor(id, v))}` : v)
+        : G.battle && v ? (CAT[id].face ? `+${Math.min(v, maxHpOf(p) - p.hp)}` : `−${v}`) : v;
       t.classList.add('preview');
       if (!v) t.classList.add('zero');
       if (v > bestV) { bestV = v; best = t; }
@@ -1436,6 +1561,10 @@ function render() {
     if (G.battle) {
       ch.querySelector('.hp i').style.width = `${Math.round(q.hp / maxHpOf(q) * 100)}%`;
       ch.classList.toggle('low', q.hp <= 30);
+    }
+    if (G.drink) {
+      ch.querySelectorAll('.glasses i').forEach((gl, k) => gl.classList.toggle('empty', k >= GLASSES - q.drunk));
+      ch.classList.toggle('low', q.drunk >= 3);
     }
   });
 
@@ -1489,6 +1618,7 @@ function render() {
   $('#roundLabel').textContent = stageOf() ? stageOf().place : '';
 
   renderBoard(p, canAct);
+  applyDrunkFx();
   const tp = $('.mentor [data-mentor]'), ta = tp.querySelector('.turn-ava');
   tp.classList.toggle('player', !!p.ava);
   if (p.ava && ta.getAttribute('src') !== p.ava) {
@@ -1525,7 +1655,7 @@ function render() {
   fill('bonus', q => bonusOf(q) || '');
   fill('extra', q => q.extra || '');
   document.querySelectorAll('#sheet tr.total td[data-p]').forEach(td => animateNum(td, shownTotal(G.players[Number(td.dataset.p)])));
-  $('#sheet tr.total .lbl span').textContent = G.battle ? 'Punti vita' : 'Totale';
+  $('#sheet tr.total .lbl span').textContent = G.drink ? 'Bicchieri rimasti' : G.battle ? 'Punti vita' : 'Totale';
 }
 
 function flashCell(id, j) {
@@ -1755,16 +1885,16 @@ function handleRejoin(g, msg) {
 }
 
 function fullState() {
-  const keys = ['cur', 'round', 'rounds', 'rainbow', 'battle', 'maxRolls', 'dice', 'held', 'colors', 'rollsLeft', 'rollsTotal', 'hasRolled', 'sel'];
+  const keys = ['cur', 'round', 'rounds', 'rainbow', 'battle', 'drink', 'maxRolls', 'dice', 'held', 'colors', 'rollsLeft', 'rollsTotal', 'hasRolled', 'sel'];
   const st = Object.fromEntries(keys.map(k => [k, G[k]]));
-  st.players = G.players.map(q => ({ name: q.name, scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, ava: q.ava, charId: q.charId, rainbow: q.rainbow, battle: q.battle }));
+  st.players = G.players.map(q => ({ name: q.name, scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, ava: q.ava, charId: q.charId, rainbow: q.rainbow, battle: q.battle, drink: q.drink, drunk: q.drunk, tempFx: q.tempFx || 0 }));
   return st;
 }
 
 function applyState(st, me) {
   if (!st) return;
   if (!G?.online) {
-    startOnline(st.battle ? 'battle' : st.rainbow ? 'rainbow' : 'classic', st.players.map(p => p.name), me, st.players.map(p => p.charId));
+    startOnline(st.drink ? 'drink' : st.battle ? 'battle' : st.rainbow ? 'rainbow' : 'classic', st.players.map(p => p.name), me, st.players.map(p => p.charId));
   }
   const { players, ...rest } = st;
   Object.assign(G, rest);
@@ -1885,11 +2015,11 @@ async function onGuestData(msg) {
 
 function startOnline(rules, names, me, chars = []) {
   $('#endOverlay').hidden = true;
-  newGame({ mode: 'online', rainbow: rules === 'rainbow', battle: rules === 'battle', names, me, chars });
+  newGame({ mode: 'online', rainbow: rules === 'rainbow', battle: rules === 'battle', drink: rules === 'drink', names, me, chars });
 }
 
 function snapshot() {
-  return { players: G.players.map(q => ({ scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out })), cur: G.cur, round: G.round };
+  return { players: G.players.map(q => ({ scores: q.scores, extra: q.extra, hp: q.hp, out: !!q.out, drunk: q.drunk || 0, tempFx: q.tempFx || 0 })), cur: G.cur, round: G.round };
 }
 
 async function applyAction(msg) {
@@ -2138,6 +2268,7 @@ function openOptions() {
   set('optMusic', OPTS.music ? 'on' : 'off');
   set('optSound', Sound.on ? 'on' : 'off');
   set('optShake', Shake.on ? 'on' : 'off');
+  set('optLight', OPTS.lightfx ? 'light' : 'full');
   show('options');
 }
 function applyOpts() {
@@ -2149,6 +2280,7 @@ function initOptions() {
   initSeg('optSpeed', v => { OPTS.fast = v === 'fast'; saveOpts(); applyOpts(); });
   initSeg('optText', v => { OPTS.big = v === 'big'; saveOpts(); applyOpts(); });
   initSeg('optTease', v => { OPTS.tease = v === 'on'; saveOpts(); if (OPTS.tease) say(pick(SARDO.near), '#optSay'); else say('Va bene, starò zitto… o quasi.', '#optSay'); });
+  initSeg('optLight', v => { OPTS.lightfx = v === 'light'; saveOpts(); });
   initSeg('optMusic', v => { OPTS.music = v === 'on'; saveOpts(); Music.refresh(); });
   initSeg('optSound', v => { if ((v === 'on') !== Sound.on) toggleSound(); });
   initSeg('optShake', async v => { if ((v === 'on') !== Shake.on) { await toggleShake(); if ((v === 'on') !== Shake.on) openOptions(); } });
@@ -2204,6 +2336,7 @@ function show(id) {
   $('#endOverlay').hidden = true;
   $('#facePick').hidden = true;
   if (id !== 'game' && TUT.on) endTutorial();
+  if (id !== 'game') { for (let k = 1; k <= 4; k++) document.body.classList.remove(`drunk-${k}`); wobbleCup(false); }
   if (id === 'menu') { refreshMenu(); refreshMenuProfile(); }
   if (id === 'game') Music.play(G?.adv && stageOf()?.id === 'mammuthones' ? 'notte' : 'bgm');
   else if (id !== 'game') Music.play('bgm');
@@ -2342,6 +2475,7 @@ function init() {
   initSeg('segRules', v => {
     $('#rulesDesc').textContent = {
       rainbow: 'Ogni dado ha un colore: rubino, smeraldo o zaffiro. Due caselle in più: Monocolore (40) e Full di colori (20). 15 turni.',
+      drink: 'Ognuno ha 5 bicchieri di vino. Tris, Poker, Full, Scale e Chance alta fanno bere l\'avversario (lo Yatzy due bicchieri a tzoccu). La parte alta fa smaltire con pane carasau e casu. Più bevi, più la vista si appanna e il bossolo balla. Chi finisce i bicchieri è cottu!',
       battle: 'Si parte da 150 punti vita. La parte alta cura te, la parte bassa attacca l\'avversario. Vince chi lo manda a zero. Si gioca in due (da solo diventa contro Tziu Gonario).',
     }[v] || '';
   });
@@ -2351,10 +2485,10 @@ function init() {
     clearSave();
     const rules = segValue('segRules');
     let mode = segValue('segMode');
-    if (rules === 'battle' && mode === 'solo') mode = 'cpu';
+    if ((rules === 'battle' || rules === 'drink') && mode === 'solo') mode = 'cpu';
     const names = [name1, ...LOCAL.names.slice(1, LOCAL.count).map(n => (n || '').trim())];
     const chars = [myChar(), ...LOCAL.chars.slice(1, LOCAL.count)];
-    newGame({ mode, level: segValue('segLevel'), rainbow: rules === 'rainbow', battle: rules === 'battle', name1, names, chars });
+    newGame({ mode, level: segValue('segLevel'), rainbow: rules === 'rainbow', battle: rules === 'battle', drink: rules === 'drink', name1, names, chars });
   });
 
   initOnline();

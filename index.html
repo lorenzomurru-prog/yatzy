@@ -66,6 +66,7 @@
       <button data-v="classic" class="on">Classiche</button>
       <button data-v="rainbow">Arcobaleno</button>
       <button data-v="battle">Battaglia</button>
+      <button data-v="drink">Bevuta</button>
     </div>
     <p class="muted small" id="rulesDesc"></p>
     <p class="label">Nomi</p>
@@ -103,6 +104,8 @@
     <div class="seg" id="optMusic"><button data-v="on" class="on">Sì</button><button data-v="off">No</button></div>
     <p class="label">Effetti sonori</p>
     <div class="seg" id="optSound"><button data-v="on" class="on">Sì</button><button data-v="off">No</button></div>
+    <p class="label">Effetti della Bevuta (vista appannata, schermo che ondeggia)</p>
+    <div class="seg" id="optLight"><button data-v="full" class="on">Pieni</button><button data-v="light">Leggeri</button></div>
     <p class="label">Agita il telefono per lanciare</p>
     <div class="seg" id="optShake"><button data-v="on">Sì</button><button data-v="off" class="on">No</button></div>
   </div>
@@ -138,6 +141,7 @@
       <button data-v="classic" class="on">Classiche</button>
       <button data-v="rainbow">Arcobaleno</button>
       <button data-v="battle">Battaglia</button>
+      <button data-v="drink">Bevuta</button>
     </div>
     <button class="btn primary wide" id="btnHost">Crea una stanza</button>
     <div id="roomBox" class="room" hidden>
@@ -182,6 +186,9 @@
     <p>Ogni dado esce anche con un colore: <b>rubino</b>, <b>smeraldo</b> o <b>zaffiro</b>. Il colore resta se tieni il dado. Due caselle in più: <b>Monocolore</b> (cinque dello stesso colore, 40) e <b>Full di colori</b> (tre di un colore e due di un altro, 20). La partita dura 15 turni.</p>
     <h3>Variante Battaglia</h3>
     <p>Due giocatori, <b>150 punti vita</b> ciascuno. Le caselle della <b>parte alta curano</b> te (fino a 150), quelle della <b>parte bassa attaccano</b>: tolgono all'avversario tanti punti vita quanto il punteggio. Arrivare a 63 nella parte alta dà una cura di 35, e ogni Yatzy extra toglie 50 punti all'avversario. Vince chi manda l'altro a zero; se finiscono le caselle, vince chi ha più punti vita.</p>
+    <h3>Variante Bevuta</h3>
+    <p>Ognuno ha davanti <b>5 bicchieri di vino</b>. Con la parte bassa fai bere chi ne ha bevuti meno: Tris, Poker, Full, Scale e Chance da 25 in su un bicchiere, lo <b>Yatzy due bicchieri a tzoccu</b>. Full e Scale fanno anche girare il tavolo all'avversario per un turno. Con la parte alta (almeno tre dadi uguali) <b>smaltisci un bicchiere</b> con pane carasau e casu, e il bonus ne smaltisce due. Ai turni 4, 8 e 12 Tziu Gonario offre un brindisi a tutti.</p>
+    <p>Più sei brillo, più la vista si appanna, i dadi tremano, vedi doppio e la mano scivola. Da due bicchieri in su il bossolo ondeggia: lancia quando è al centro, se no un dado cade dal tavolo e conta 1. Chi finisce i 5 bicchieri è <b>cottu</b> ed è fuori; vince l'ultimo in piedi o, a fine turni, chi ha bevuto meno.</p>
     <h3>Yatzy extra</h3>
     <p>Se hai già segnato 50 nella casella Yatzy, ogni nuovo Yatzy vale <b>100 punti bonus</b>. Se la casella Yatzy è già piena, un nuovo Yatzy vale anche come jolly per Full e Scale.</p>
     <p class="muted">Puoi segnare una casella anche quando i dadi non la soddisfano: vale zero. A volte conviene!</p>
@@ -205,6 +212,7 @@
       <div class="table-area">
         <div class="tray" id="tray"></div>
         <button class="cup" id="cup" aria-label="Bossolo: lancia i dadi"></button>
+        <div class="cup-aim" id="cupAim" hidden><i></i><span>Lancia qui!</span></div>
         <p class="roll-hint" id="rollHint">Tocca il tavolo per lanciare</p>
         <div class="rolls" id="rolls"></div>
         <div class="actions">
