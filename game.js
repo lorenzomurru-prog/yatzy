@@ -34,7 +34,7 @@ const MAX_HP = 150, BATTLE_BONUS_HEAL = 35, BATTLE_EXTRA_HIT = 50;
 const GLASSES = 5, SALUDE_ROUNDS = [4, 8, 12];
 const DRINKS = {
   ichnusa:    { name: 'Ichnusa',         emoji: '🍺', color: '#e8b33a' },
-  vino:       { name: 'vino nieddu',     emoji: '🍷', color: '#7a0f1d' },
+  vino:       { name: 'vino nieddu',     emoji: '🍷', color: '#7a0f1d', short: 'vino' },
   mirto:      { name: 'mirto',           emoji: '🫐', color: '#5b1f63' },
   filu:       { name: "filu 'e ferru",   emoji: '🥃', color: '#efe8d2' },
   cannonau:   { name: 'Cannonau',        emoji: '🍷', color: '#4a0410' },
@@ -1610,8 +1610,15 @@ const ICON = {
 };
 
 function buildBoard() {
-  const tile = (id, inner, cls = '') => `<button class="tile ${cls}" data-id="${id}" aria-label="${CAT[id].label}"><span class="t-top">${inner}</span><span class="t-val"></span><i class="t-check" aria-hidden="true">✓</i></button>`;
+  const drinkTag = id => {
+    const dk = G.drink && DRINK_OF[id] && DRINKS[DRINK_OF[id]];
+    if (!dk) return '';
+    const n = ['cinq', 'mono'].includes(id) ? 2 : 1;
+    return `<span class="t-drink" style="--dc:${dk.color}" title="${dk.name}${id === 'chance' ? ' (da 25 punti)' : ''}">${dk.emoji.repeat(n)} ${dk.short || dk.name}</span>`;
+  };
+  const tile = (id, inner, cls = '') => `<button class="tile ${cls}" data-id="${id}" aria-label="${CAT[id].label}">${drinkTag(id)}<span class="t-top">${inner}</span><span class="t-val"></span><i class="t-check" aria-hidden="true">✓</i></button>`;
   $('#board').classList.toggle('battle', !!G.battle);
+  $('#board').classList.toggle('drink', !!G.drink);
   $('#board').innerHTML =
     `<div class="b-upper">${UPPER.map(c => tile(c.id, `<span class="mini">${pipsHTML(c.face)}</span>`, 'up')).join('')}</div>
      <div class="bonusbar"><i></i><b class="sheep" aria-hidden="true">🐑</b><span></span></div>

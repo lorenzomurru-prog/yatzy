@@ -976,3 +976,16 @@ body.tavern #game .game-grid::after {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Bevuta: il drink di ogni casella, visibile da subito */
+#board.drink .tile:not(.up) { padding-top: 22px; min-height: 84px; }
+.t-drink {
+  position: absolute; top: 0; left: 0; right: 0; height: 17px;
+  display: flex; align-items: center; justify-content: center; gap: 2px;
+  font: 650 11px/1 var(--font-ui); color: var(--ivory); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: color-mix(in srgb, var(--dc) 42%, rgba(0, 0, 0, .35));
+  border-bottom: 1px solid color-mix(in srgb, var(--dc) 60%, transparent);
+  padding: 0 4px; pointer-events: none;
+}
+.tile.wide .t-drink { font-size: 12px; }
+.tile.done .t-drink { opacity: .45; }
