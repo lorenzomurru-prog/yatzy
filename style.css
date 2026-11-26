@@ -775,6 +775,27 @@ body.lightfx .table-area, body.lightfx .board { filter: blur(.4px) !important; }
 .cup-aim i { display: block; width: 4px; height: 70px; border-radius: 2px; translate: -50% 0; background: linear-gradient(180deg, transparent, var(--green), transparent); box-shadow: 0 0 10px var(--green); }
 .cup-aim span { display: block; width: max-content; translate: -50% 0; font-size: 12px; font-weight: 700; color: var(--green); margin-top: 2px; }
 
+/* Bicchiere tirato contro lo schermo */
+.wine-splash {
+  position: fixed; inset: 0; z-index: 35; pointer-events: none;
+  background:
+    radial-gradient(circle at 48% 42%, rgba(120, 8, 22, .85) 0 7%, transparent 8%),
+    radial-gradient(circle at 56% 50%, rgba(140, 12, 28, .8) 0 4%, transparent 5%),
+    radial-gradient(circle at 40% 55%, rgba(110, 6, 20, .75) 0 3%, transparent 4%),
+    radial-gradient(circle at 62% 36%, rgba(150, 14, 30, .7) 0 2.5%, transparent 3.5%),
+    radial-gradient(circle at 35% 35%, rgba(130, 10, 25, .7) 0 2%, transparent 3%),
+    radial-gradient(ellipse at 50% 46%, rgba(120, 8, 22, .35) 0 22%, transparent 40%);
+  animation: splash 2.6s ease-out forwards;
+}
+.wine-splash::after {
+  content: ""; position: absolute; left: 50%; top: 44%; width: 2px; height: 46%;
+  background: linear-gradient(180deg, rgba(120, 8, 22, .8), transparent);
+  box-shadow: 30px 10px 0 rgba(120, 8, 22, .6), -26px 22px 0 rgba(120, 8, 22, .5);
+  animation: drip 2.6s ease-in forwards;
+}
+@keyframes splash { 0% { transform: scale(.3); opacity: 0; } 8% { transform: scale(1.08); opacity: 1; } 15% { transform: scale(1); } 70% { opacity: .9; } 100% { opacity: 0; } }
+@keyframes drip { 0% { transform: scaleY(0); transform-origin: top; } 30% { transform: scaleY(.2); } 100% { transform: scaleY(1); transform-origin: top; } }
+
 /* ── Fine partita ── */
 .overlay {
   position: fixed; inset: 0; z-index: 10;

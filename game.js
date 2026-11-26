@@ -111,9 +111,12 @@ const CHARMS = {
 // goal: score = fai almeno `min` punti da solo · beat = batti l'avversario (con `margin` di scarto, e il bonus se `needBonus`)
 const STAGES = [
   { id: 'bottega', place: "L'Ovile", icon: '🐑', portrait: 'img/gonario/idle.webp',
-    desc: 'Tra pecore e muretti a secco comincia il viaggio. Tziu Gonario vuole vedere come lanci.',
-    goal: { type: 'score', min: 120 }, goalText: 'Fai almeno 120 punti', stars: [170, 220], unlock: 'ritorno',
-    intro: 'Ajò! Prima di partire fammi vedere come lanci. Arriva a 120 punti!' },
+    desc: 'Tra pecore e muretti a secco comincia il viaggio. Prima di lasciarti partire, Tziu Gonario ti sfida lui stesso… col bicchiere in mano.',
+    foe: { name: 'Tziu Gonario', portrait: 'img/gonario/idle.webp', icon: '🐑', level: 'easy',
+      quote: 'Ajò! Fammi vedere come lanci. E se perdi, il prossimo bicchiere lo paghi tu!',
+      lines: ['Eja! Il vecchio non ha perso la mano!', 'Hic! Questo lo sapevo fare già da piccolo.'] },
+    goal: { type: 'beat' }, goalText: 'Batti Tziu Gonario', stars: [170, 220], unlock: 'ritorno',
+    intro: 'Ajò! Prima di partire fammi vedere come lanci… hic! Battimi, se ci riesci.' },
   { id: 'gavinedda', place: 'Su Furru', icon: '🍞',
     desc: 'Profumo di pane appena sfornato. Tzia Gavinedda gioca piano piano, punta sempre al bonus e non sbaglia mai un conto.',
     foe: { name: 'Tzia Gavinedda', img: 'gavinedda', icon: '👵', level: 'easy', style: 'prudente',
@@ -127,11 +130,11 @@ const STAGES = [
       lines: ['Questa è una forma da tre chili!', 'Stagionato al punto giusto.'] },
     goal: { type: 'beat' }, goalText: 'Batti il Casaro', stars: [200, 250], unlock: 'lente' },
   { id: 'tzilleri', place: 'Su Tzilleri', icon: '🍷',
-    desc: 'Nel bar del paese si gioca in fretta: tutti hanno solo due lanci per turno. Il barista lancia e via, senza pensarci troppo.',
+    desc: 'Nel bar del paese non si gioca solo a dadi: qui si gioca a Bevuta! Il barista è impulsivo e regge bene il vino.',
     foe: { name: 'Il barista', img: 'barista', icon: '🍷', level: 'normal', style: 'impulsivo',
       quote: 'Un lancio, un bicchiere, e via! Qui non si perde tempo.',
       lines: ['Alla salute!', 'Offre la casa!'] },
-    rolls: 2, goal: { type: 'beat' }, goalText: 'Batti il barista con soli 2 lanci per turno', stars: [170, 210] },
+    rules: 'drink', goal: { type: 'beat' }, goalText: 'Batti il barista a Bevuta: fallo finire cottu prima di te', stars: [2, 4], starUnit: 'bicchieri rimasti' },
   { id: 'sartiglia', place: 'Sa Sartiglia', icon: '⭐',
     desc: 'Alla giostra si corre verso la stella. Su Componidori rischia tutto per scale e Yatzy. Si gioca con i dadi Arcobaleno.',
     foe: { name: 'Su Componidori', img: 'componidori', icon: '⭐', level: 'normal', style: 'stelle',
@@ -591,7 +594,31 @@ function lookAt(x, y) {
 }
 
 // Toccando Tziu Gonario risponde con un proverbio
+// Tziu Gonario brillo ogni tanto si arrabbia e tira il bicchiere verso lo schermo
+const RABBIA = 'Oh ite cazzu cherese?! Lassami buffare in paghe!|Oh, che c… vuoi?! Lasciami bere in pace!';
+let lastTantrum = 0;
+function tantrum() {
+  if (reducedMotion || Date.now() - lastTantrum < 25000) return false;
+  lastTantrum = Date.now();
+  const hasClip = !!clips['g-rabbia'];
+  cameo(RABBIA, 'cheer', true, 'g-rabbia');
+  mood('sad', 3000);
+  // il bicchiere arriva sullo schermo: schizzo di vino
+  setTimeout(() => {
+    const sp = document.createElement('div');
+    sp.className = 'wine-splash';
+    document.body.appendChild(sp);
+    Sound.hit(30);
+    haptic([60, 30, 120]);
+    setTimeout(() => sp.remove(), 2600);
+  }, hasClip ? 2300 : 600);
+  return true;
+}
+
+let pokes = [];
 function pokeMentor(el) {
+  pokes = [...pokes.filter(t => Date.now() - t < 15000), Date.now()];
+  if (pokes.length >= 4 || Math.random() < 0.12) { pokes = []; if (tantrum()) return; }
   el.classList.remove('jump'); void el.offsetWidth; el.classList.add('jump');
   mood('happy', 1800);
   haptic(15);
@@ -680,7 +707,7 @@ const ROLL_WORDS = ['nessun lancio', 'un lancio', 'due lanci', 'tre lanci', 'qua
 function newGame(setup) {
   if (setup.mode === 'adv') {
     const st = STAGES[setup.stage];
-    setup = { ...setup, rainbow: st.rules === 'rainbow', battle: st.rules === 'battle' };
+    setup = { ...setup, rainbow: st.rules === 'rainbow', battle: st.rules === 'battle', drink: st.rules === 'drink' };
   }
   lastSetup = setup;
   const mk = (name, cpu = false) => ({ name, cpu, scores: {}, extra: 0, rainbow: !!setup.rainbow, battle: !!setup.battle, drink: !!setup.drink, hp: MAX_HP, drunk: 0 });
@@ -702,7 +729,7 @@ function newGame(setup) {
       const foe = mk(st.foe.name, true);
       foe.icon = st.foe.icon;
       foe.img = st.foe.img;
-      foe.ava = rivalSrc(st.foe.img);
+      foe.ava = st.foe.img ? rivalSrc(st.foe.img) : null;
       foe.style = st.foe.style;
       foe.lines = st.foe.lines;
       foe.extra = st.foe.head || 0;
@@ -793,7 +820,7 @@ function loadClip(key, url) {
 }
 const loadGonarioClips = () => {
   loadClip('gonario', `${G_DIR}ballo.webp`);
-  ['vino', 'birra', 'sonno', 'ride', 'pecora', 'barcolla', 'singhiozzo'].forEach(k => loadClip(`g-${k}`, `${G_DIR}${k}.webp`));
+  ['vino', 'birra', 'sonno', 'ride', 'pecora', 'barcolla', 'singhiozzo', 'rabbia'].forEach(k => loadClip(`g-${k}`, `${G_DIR}${k}.webp`));
 };
 
 // Tziu Gonario entra in scena per festeggiare (non blocca il gioco)
@@ -1013,6 +1040,7 @@ function commit(id) {
     mood('smirk', 2600);
     if (Math.random() < 0.5) cameo(msg, 'cheer', false, 'g-ride');
   }
+  else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc === 0 && Math.random() < 0.5 && tantrum()) { msg = RABBIA; }
   else if (!msg && p.cpu && p.name === 'Tziu Gonario' && sc >= 25 && Math.random() < 0.6) {
     msg = sline('gloat', 'gloat', 0.5); mood('happy');
     cameo(pick(SARDO.vino), 'cheer', false, 'g-vino');      // si concede un bicchiere di vino nieddu
@@ -1203,7 +1231,7 @@ function renderMap() {
   $('#mapList').innerHTML = STAGES.map((s, i) => {
     const open = stageUnlocked(a, i), st = a.stars[s.id] || 0;
     return `<button class="stage ${open ? '' : 'locked'} ${st ? 'done' : ''}" data-i="${i}" ${open ? '' : 'disabled'}>
-      <span class="medal">${open ? avatarHTML(s.foe ? rivalSrc(s.foe.img) : s.portrait) : '🔒'}</span>
+      <span class="medal">${open ? avatarHTML(s.foe?.img ? rivalSrc(s.foe.img) : s.portrait) : '🔒'}</span>
       <span class="info"><small>Tappa ${i + 1}</small><b>${s.place}</b><em>${open ? (s.foe ? s.foe.name : 'Tziu Gonario') : 'Bloccata'}</em></span>
       <span class="stars">${[0, 1, 2].map(k => `<span class="${k < st ? 'on' : ''}">★</span>`).join('')}</span>
     </button>`;
@@ -1217,7 +1245,7 @@ function openBrief(i) {
   briefStage = i;
   const s = STAGES[i], a = loadAdv();
   const owned = charmsOwned(a);
-  $('#briefIcon').innerHTML = avatarHTML(s.foe ? rivalSrc(s.foe.img) : s.portrait);
+  $('#briefIcon').innerHTML = avatarHTML(s.foe?.img ? rivalSrc(s.foe.img) : s.portrait);
   $('#briefStep').textContent = `Tappa ${i + 1} di ${STAGES.length}`;
   $('#briefPlace').textContent = s.place;
   $('#briefDesc').textContent = s.desc;
