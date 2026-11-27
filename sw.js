@@ -1,13 +1,13 @@
 // Cache per giocare offline. Cambia VERSION quando aggiorni i file.
-const VERSION = 'cd-v27';
+const VERSION = 'cd-v28';
 const FILES = ['./', 'index.html', 'style.css', 'game.js', 'icon.svg', 'manifest.webmanifest',
   'img/gonario/idle.webp', 'img/gonario/blink.webp', 'img/gonario/talk.webp', 'img/gonario/happy.webp',
   'img/gonario/wow.webp', 'img/gonario/smirk.webp', 'img/gonario/sad.webp', 'img/gonario/think.webp', 'img/gonario/ballo.webp',
   'img/rivali/gavinedda.webp', 'img/rivali/casaro.webp', 'img/rivali/barista.webp', 'img/rivali/componidori.webp',
-  'img/rivali/merdules.webp', 'img/rivali/mammuthones.webp',
+  'img/rivali/merdules.webp', 'img/rivali/mammuthones.webp', 'img/rivali/paskale.webp', 'img/rivali/bonaria.webp',
   'img/giocatori/pastoreddu.webp', 'img/giocatori/tenore.webp', 'img/giocatori/launeddas.webp',
   'img/giocatori/boe.webp', 'img/giocatori/jana.webp', 'img/giocatori/piscadore.webp',
-  'img/giocatori/sirbone.webp', 'img/giocatori/mufrone.webp', 'img/giocatori/cuaddeddu.webp',
+  'img/giocatori/sirbone.webp', 'img/giocatori/mufrone.webp', 'img/giocatori/cuaddeddu.webp', 'img/giocatori/filonzana.webp', 'img/giocatori/crabitta.webp', 'img/giocatori/ballerina.webp',
   'audio/sottofondo.mp3', 'audio/notte.mp3', 'audio/vittoria.mp3'];
 
 self.addEventListener('install', e => {

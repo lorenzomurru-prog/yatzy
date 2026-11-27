@@ -160,6 +160,13 @@ const STAGES = [
       lines: ['Eh eh! Anche da mezzo addormentato ti batto!', 'Hic! Questo tiro lo dedico al fiasco.'] },
     rules: 'drink', goal: { type: 'beat' }, goalText: 'Batti Tziu Paskale a Bevuta: fallo finire cottu prima di te', stars: [3, 5], starUnit: 'bicchieri rimasti',
     intro: 'Attento a Tziu Paskale: è più cottu di me, ma coi dadi è un volpone… hic!' },
+  { id: 'bonaria', place: 'Sa Domo', icon: '🧹',
+    desc: 'Tzia Bonaria, la moglie di Tziu Gonario, è venuta a riportarlo a casa. Il vino non lo sopporta e ogni tanto porta via il fiasco a tutti: in Bevuta è un osso duro.',
+    foe: { name: 'Tzia Bonaria', img: 'bonaria', icon: '🧹', level: 'hard', style: 'moglie',
+      quote: 'Gonario! A casa, subito! E tu, siediti: prima finiamo questa partita.',
+      lines: ['Altro che vino: qui si gioca con la testa!', 'Ecco come si fa, senza bicchiere in mano.'] },
+    rules: 'drink', goal: { type: 'beat' }, goalText: 'Batti Tzia Bonaria a Bevuta: falla finire cotta prima di te', stars: [3, 5], starUnit: 'bicchieri rimasti',
+    intro: 'Ahi ahi… è arrivata mia moglie! Nascondi il bicchiere e battila tu, che io non ho il coraggio… hic!' },
   { id: 'sartiglia', place: 'Sa Sartiglia', icon: '⭐',
     desc: 'Alla giostra si corre verso la stella. Su Componidori rischia tutto per scale e Yatzy. Si gioca con i dadi Arcobaleno.',
     foe: { name: 'Su Componidori', img: 'componidori', icon: '⭐', level: 'normal', style: 'stelle',
@@ -715,6 +722,9 @@ const PLAYER_CHARS = [
   { id: 'sirbone',    name: 'Su Sirbone',     desc: 'Il cinghiale sardo, testardo e furbo.' },
   { id: 'mufrone',    name: 'Su Mufrone',     desc: 'Il muflone dalle grandi corna.' },
   { id: 'cuaddeddu',  name: 'Su Cuaddeddu',   desc: 'Il cavallino selvatico della Giara.' },
+  { id: 'filonzana',  name: 'Sa Filonzana',   desc: 'La maschera di Ottana che fila la lana… e il tuo destino.' },
+  { id: 'crabitta',   name: 'Sa Crabitta',    desc: 'La capretta curiosa che salta sui muretti.' },
+  { id: 'ballerina',  name: 'Sa Ballerina',   desc: 'Balla su ballu tundu col costume della festa.' },
 ];
 const charSrc = id => (PLAYER_CHARS.some(c => c.id === id) ? `img/giocatori/${id}.webp` : null);
 const myChar = () => localStorage.getItem('cd.char');
@@ -1208,6 +1218,11 @@ function commit(id) {
     p.skip = true;
     msg = `${p.name} si appisola sul fiasco… Zzz… salta il prossimo turno!`;
     mood('happy', 2500);
+  }
+  if (G.drink && p.style === 'moglie' && !p.out && Math.random() < 0.2 && G.players.some(q => q.drunk > 0)) {
+    G.players.forEach(q => { if (q.drunk > 0) { q.drunk--; q.drinks?.pop(); } });
+    msg = `${p.name} porta via il fiasco: un bicchiere in meno per tutti!`;
+    mood('sad', 2500);
   }
   if (isMe(p) && sc >= 25) cheerChip(G.cur);
   maybeTantrum();
