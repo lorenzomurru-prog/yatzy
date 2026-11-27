@@ -31,7 +31,9 @@ const LOWER = [...CATS.filter(c => !c.face), ...RAINBOW_CATS];
 const BONUS_AT = 63, BONUS = 35, CINQ_BONUS = 100;
 const MAX_HP = 150, BATTLE_BONUS_HEAL = 35, BATTLE_EXTRA_HIT = 50;
 // Bevuta: 5 bicchieri a testa. La parte bassa fa bere l'avversario, la parte alta fa smaltire.
-const GLASSES = 5, SALUDE_ROUNDS = [4, 8, 12];
+const GLASSES = 7, SALUDE_ROUNDS = [4, 8, 12];
+// quanto si vede l'ubriachezza (0–4), in proporzione ai bicchieri bevuti
+const dlv = q => Math.min(4, Math.round((q?.drunk || 0) * 4 / (GLASSES - 1)));
 const DRINKS = {
   ichnusa:    { name: 'Ichnusa',         emoji: '🍺', color: '#e8b33a' },
   vino:       { name: 'vino nieddu',     emoji: '🍷', color: '#7a0f1d', short: 'vino' },
@@ -150,7 +152,14 @@ const STAGES = [
     foe: { name: 'Il barista', img: 'barista', icon: '🍷', level: 'normal', style: 'impulsivo',
       quote: 'Un lancio, un bicchiere, e via! Qui non si perde tempo.',
       lines: ['Alla salute!', 'Offre la casa!'] },
-    rules: 'drink', goal: { type: 'beat' }, goalText: 'Batti il barista a Bevuta: fallo finire cottu prima di te', stars: [2, 4], starUnit: 'bicchieri rimasti' },
+    rules: 'drink', goal: { type: 'beat' }, goalText: 'Batti il barista a Bevuta: fallo finire cottu prima di te', stars: [3, 5], starUnit: 'bicchieri rimasti' },
+  { id: 'paskale', place: 'Sa Cantina', icon: '🍶',
+    desc: 'In fondo alla cantina, tra le botti, ti aspetta Tziu Paskale: ancora più cottu di Tziu Gonario. Parte già con due bicchieri in corpo, ma gioca da maestro… quando non si addormenta.',
+    foe: { name: 'Tziu Paskale', img: 'paskale', icon: '🍶', level: 'hard', style: 'dormiglione', drunk: 2,
+      quote: 'Hic… chi ha detto che sono ubriaco? Siediti, che ti insegno io i dadi.',
+      lines: ['Eh eh! Anche da mezzo addormentato ti batto!', 'Hic! Questo tiro lo dedico al fiasco.'] },
+    rules: 'drink', goal: { type: 'beat' }, goalText: 'Batti Tziu Paskale a Bevuta: fallo finire cottu prima di te', stars: [3, 5], starUnit: 'bicchieri rimasti',
+    intro: 'Attento a Tziu Paskale: è più cottu di me, ma coi dadi è un volpone… hic!' },
   { id: 'sartiglia', place: 'Sa Sartiglia', icon: '⭐',
     desc: 'Alla giostra si corre verso la stella. Su Componidori rischia tutto per scale e Yatzy. Si gioca con i dadi Arcobaleno.',
     foe: { name: 'Su Componidori', img: 'componidori', icon: '⭐', level: 'normal', style: 'stelle',
@@ -173,7 +182,7 @@ const STAGES = [
 const ADV_KEY = 'cd.adv';
 const loadAdv = () => { try { return JSON.parse(localStorage.getItem(ADV_KEY)) || { stars: {} }; } catch { return { stars: {} }; } };
 const saveAdv = a => localStorage.setItem(ADV_KEY, JSON.stringify(a));
-const stageUnlocked = (a, i) => i === 0 || (a.stars[STAGES[i - 1].id] || 0) > 0;
+const stageUnlocked = (a, i) => i === 0 || (a.stars[STAGES[i].id] || 0) > 0 || (a.stars[STAGES[i - 1].id] || 0) > 0;
 const charmsOwned = a => STAGES.filter(s => s.unlock && (a.stars[s.id] || 0) > 0).map(s => s.unlock);
 
 // Stili di gioco degli avversari dell'avventura
@@ -747,6 +756,7 @@ const ROLL_WORDS = ['nessun lancio', 'un lancio', 'due lanci', 'tre lanci', 'qua
 // setup: { mode: 'cpu'|'duo'|'solo'|'adv', level, name1, name2, stage, charm }
 function newGame(setup) {
   tantrumsThisGame = 0;
+  $('#betOverlay').hidden = true;
   if (setup.mode === 'adv') {
     const st = STAGES[setup.stage];
     setup = { ...setup, rainbow: st.rules === 'rainbow', battle: st.rules === 'battle', drink: st.rules === 'drink' };
@@ -776,6 +786,7 @@ function newGame(setup) {
       foe.style = st.foe.style;
       foe.lines = st.foe.lines;
       foe.extra = st.foe.head || 0;
+      if (st.foe.drunk && setup.drink) { foe.drunk = st.foe.drunk; foe.drinks = Array(st.foe.drunk).fill('vino'); }
       if (st.foe.hp) foe.hp = foe.maxHp = st.foe.hp;
       players.push(foe);
       level = st.foe.level;
@@ -925,12 +936,58 @@ async function rollDice(which, preset) {
   busy = false;
 }
 
+// Bevuta: prima dell'ultimo lancio Tziu Gonario propone una scommessa
+const BET_NEED = { 3: 'un Tris (3 dadi uguali)', 4: 'un Poker (4 dadi uguali)', 5: 'uno Yatzy (5 dadi uguali)' };
+function maybeOfferBet() {
+  const p = curP();
+  if (!G.drink || G.online || !isMe(p) || p.cpu || G.rollsLeft !== 1 || G.bet || (G.betsMade || 0) >= 2) return;
+  const have = Math.max(...counts(G.dice));
+  if (have >= 5 || Math.random() > 0.35) return;
+  const need = Math.max(3, have + 1);
+  G.bet = { need, state: 'offer' };
+  G.betsMade = (G.betsMade || 0) + 1;
+  $('#betNeed').textContent = BET_NEED[need];
+  $('#betOverlay').hidden = false;
+  mood('smirk', 4000);
+  Sound.tone && Sound.ensure() && Sound.tone(520, Sound.ctx.currentTime, 0.2, 'triangle', 0.08);
+}
+function answerBet(yes) {
+  $('#betOverlay').hidden = true;
+  if (!G.bet) return;
+  if (!yes) { G.bet = null; say('Eh eh, hai paura del vecchio? Va bene, va bene…'); mood('smirk', 2200); return; }
+  G.bet.state = 'on';
+  say(`Affare fatto! Al prossimo lancio voglio vedere ${BET_NEED[G.bet.need]}.`);
+  mood('happy', 2200);
+  render();
+}
+function resolveBet() {
+  if (!G.bet || G.bet.state !== 'on') { G.bet = null; return; }
+  const p = curP(), j = G.cur, won = Math.max(...counts(G.dice)) >= G.bet.need;
+  G.bet = null;
+  if (won) {
+    const back = Math.min(2, p.drunk);
+    p.drunk -= back; p.drinks.length = p.drunk;
+    say(back ? `Scommessa vinta! Ti riprendi ${back === 2 ? 'due bicchieri' : 'un bicchiere'}. Tziu Gonario mastica amaro…` : 'Scommessa vinta! Eri già sobrio, ma la soddisfazione resta.');
+    mood('sad', 3000);
+    FX.burstAt($('#tray'), 50); Sound.score(true);
+    cameo(pick(SARDO.stupore), 'wow', true, 'g-barcolla');
+  } else {
+    if (p.drunk < GLASSES - 1) { p.drunk++; p.drinks.push('vino'); drinkFx(j, 1, 'vino'); }
+    say('Scommessa persa! Un vinello a tzoccu, forza… glu glu glu!');
+    mood('happy', 3000);
+    cameo('A sa salude!|Alla salute!', 'cheer', true, 'g-vino');
+  }
+  render();
+}
+
 async function doRoll(preset) {
   await rollDice([0, 1, 2, 3, 4].filter(i => !G.held[i]), preset);
   G.rollsLeft--;
   G.hasRolled = true;
   render();
   react();
+  if (G.rollsLeft === 0 && G.bet) setTimeout(resolveBet, reducedMotion ? 0 : 900);
+  else if (!curP().cpu) setTimeout(() => { if (!busy) maybeOfferBet(); }, reducedMotion ? 0 : 700);
   if (!curP().cpu) tutEvent('roll');
 }
 
@@ -1107,6 +1164,7 @@ function choose(id) {
 }
 
 function commit(id) {
+  if (G.bet) { if (G.bet.state === 'on') resolveBet(); else { G.bet = null; $('#betOverlay').hidden = true; } }
   const p = curP();
   const joker = jokerFor(p, G.dice);
   const sc = scoreFor(id, G.dice, joker, G.colors);
@@ -1146,6 +1204,11 @@ function commit(id) {
   }
   else if (!isMe(p) && !p.cpu && sc >= 30 && Math.random() < 0.4) cameo(pick(SARDO.vino), 'cheer', false, 'g-vino');
   else if (!msg && p.cpu && p.lines && sc >= 25 && Math.random() < 0.6) { msg = `${p.name}: «${pick(p.lines)}»`; mood('sad'); }
+  if (p.style === 'dormiglione' && !p.out && !p.skip && Math.random() < 0.2) {
+    p.skip = true;
+    msg = `${p.name} si appisola sul fiasco… Zzz… salta il prossimo turno!`;
+    mood('happy', 2500);
+  }
   if (isMe(p) && sc >= 25) cheerChip(G.cur);
   maybeTantrum();
   if (isMe(p) && !hadBonus && bonusOf(p) > 0) cameo('Bonus! Anche la pecorella è contenta: su pastore bonu non perdet mai una berbeghe.', 'cheer', true, 'g-pecora');
@@ -1183,7 +1246,7 @@ function commit(id) {
       target.drunk += take;
       for (let k = 0; k < take; k++) target.drinks.push(dk);
       if (shakesFor(id)) target.tempFx = 1;
-      if (dk === 'filu') target.tempFx = Math.max(target.tempFx || 0, 3 - target.drunk);   // filu 'e ferru: vista doppia subito
+      if (dk === 'filu') target.tempFx = Math.max(target.tempFx || 0, 3 - dlv(target));   // filu 'e ferru: vista doppia subito
       drinkFx(G.players.indexOf(target), take, dk);
       msg = take >= 2 ? `${target.name} beve ${drink.emoji} ${drink.name}: due bicchieri a tzoccu! Glu glu glu…` : `${target.name} beve ${drink.emoji} ${drink.name} a tzoccu! ${pick(SARDO.ubriaco).split('|')[0]}`;
       if (target.drunk >= GLASSES) {
@@ -1192,7 +1255,7 @@ function commit(id) {
         mood('wow', 3000);
         cameo(SARDO.cottu[0], 'cheer', true, 'g-ride');
         ko = alive().length <= 1;
-      } else if (target.drunk >= 3) cameo(pick(SARDO.ubriaco), 'cheer', false, 'g-barcolla');
+      } else if (dlv(target) >= 3) cameo(pick(SARDO.ubriaco), 'cheer', false, 'g-barcolla');
     }
   }
   if (G.battle) {
@@ -1471,7 +1534,7 @@ function drunkLevel() {
   if (!G?.drink || !$('#game').classList.contains('active')) return 0;
   const p = curP();
   if (!isMe(p) || p.out) return 0;
-  return Math.min(4, p.drunk + (p.tempFx || 0));
+  return Math.min(4, dlv(p) + (p.tempFx || 0));
 }
 function applyDrunkFx() {
   const lvl = drunkLevel();
@@ -1752,6 +1815,7 @@ function render() {
     const j = Number(ch.dataset.p);
     ch.classList.toggle('on', j === G.cur);
     ch.classList.toggle('out', !!G.players[j].out);
+    ch.classList.toggle('asleep', !!G.players[j].skip && !G.players[j].out);
     const q = G.players[j];
     animateNum(ch.querySelector('b'), shownTotal(q));
     if (G.battle) {
@@ -1766,8 +1830,8 @@ function render() {
         gl.style.setProperty('--res', dk ? DRINKS[dk].color : 'transparent');
         gl.title = dk ? DRINKS[dk].name : '';
       });
-      ch.dataset.drunk = q.drunk;
-      ch.classList.toggle('low', q.drunk >= 3);
+      ch.dataset.drunk = dlv(q);
+      ch.classList.toggle('low', q.drunk >= GLASSES - 2);
     }
   });
 
@@ -1827,10 +1891,10 @@ function render() {
   gb.hidden = !G.drink || !isMe(p) || !!p.giroUsed || !!p.out;
   gb.disabled = !canAct;
   document.body.classList.toggle('tavern', !!G.drink && $('#game').classList.contains('active'));
-  document.body.style.setProperty('--dim', G.drink ? (Math.min(4, p.drunk) * 0.09).toFixed(2) : '0');
+  document.body.style.setProperty('--dim', G.drink ? (dlv(p) * 0.09).toFixed(2) : '0');
   const tp = $('.mentor [data-mentor]'), ta = tp.querySelector('.turn-ava');
   tp.classList.toggle('player', !!p.ava);
-  tp.dataset.drunk = G.drink ? Math.min(4, p.drunk) : 0;
+  tp.dataset.drunk = G.drink ? dlv(p) : 0;
   if (p.ava && ta.getAttribute('src') !== p.ava) {
     ta.setAttribute('src', p.ava);
     tp.classList.remove('pop'); void tp.offsetWidth; tp.classList.add('pop');
@@ -2660,6 +2724,8 @@ function init() {
   $('#btnPlayStage').addEventListener('click', startStage);
   $('#btnCharm').addEventListener('click', useCharm);
   $('#btnGiro').addEventListener('click', offerGiro);
+  $('#btnBetYes').addEventListener('click', () => answerBet(true));
+  $('#btnBetNo').addEventListener('click', () => answerBet(false));
   $('#btnNext').addEventListener('click', () => openBrief(G.adv.stage + 1));
   $('#btnSound').addEventListener('click', toggleSound);
   $('#btnSound2').addEventListener('click', () => {

@@ -736,7 +736,7 @@ body.tut #game.screen { padding-bottom: 240px; }
 /* ── Bevuta ── */
 .chip.drink { flex-wrap: wrap; row-gap: 6px; }
 .chip.drink b::after { content: " 🍷"; font-size: 12px; }
-.glasses { flex-basis: 100%; display: flex; gap: 5px; }
+.glasses { flex-basis: 100%; display: flex; gap: 3px; }
 .glasses i {
   position: relative; width: 14px; height: 18px; border-radius: 2px 2px 4px 4px;
   border: 1.5px solid rgba(246, 234, 210, .6); border-top-width: 1px;
@@ -1046,3 +1046,22 @@ body.yatzy-flash::after { content: ""; position: fixed; inset: 0; z-index: 29; p
 body.shake-sm .game-grid { animation: shakeSm .35s ease; }
 @keyframes shakeSm { 25% { transform: translate(3px, 1px); } 50% { transform: translate(-3px, -1px); } 75% { transform: translate(2px, 0); } }
 @media (prefers-reduced-motion: reduce) { .yatzy-banner, .zero-stamp, .die.party, .tile.shamed { animation: none; } }
+
+/* Bevuta: la scommessa di Tziu Gonario */
+.panel.bet { text-align: center; max-width: 360px; }
+.panel.bet .portrait.big { margin: -6px auto 0; }
+.bet-rule { font-size: 17px; line-height: 1.4; margin: 6px 0 12px; }
+.bet-rule b { color: var(--amber-l); }
+.bet-odds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+.bet-odds div { border-radius: 14px; padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; }
+.bet-odds span { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; opacity: .8; }
+.bet-odds b { font-size: 14px; line-height: 1.3; }
+.bet-odds .win { background: rgba(95, 211, 160, .14); box-shadow: inset 0 0 0 1px rgba(95, 211, 160, .4); }
+.bet-odds .lose { background: rgba(160, 20, 40, .2); box-shadow: inset 0 0 0 1px rgba(220, 70, 80, .4); }
+.bet-overlay .panel { animation: betIn .45s cubic-bezier(.3, 1.5, .5, 1); }
+@keyframes betIn { from { transform: scale(.7) rotate(-4deg); opacity: 0; } }
+
+/* chi salta il turno dorme */
+.chip.asleep { opacity: .8; position: relative; }
+.chip.asleep::after { content: "💤"; position: absolute; top: -8px; right: 6px; font-size: 18px; animation: zzz 1.8s ease-in-out infinite; }
+@keyframes zzz { 50% { transform: translate(3px, -4px) rotate(8deg); } }
