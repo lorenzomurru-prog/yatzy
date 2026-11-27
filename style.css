@@ -1004,3 +1004,45 @@ body.tavern #game .game-grid::after {
 .tile.done .t-liquid em { color: var(--muted); text-shadow: none; }
 .tile.wide .t-liquid i { height: 30%; }
 .tile.wide.done .t-liquid i { height: 9%; }
+
+/* Yatzy: festa grande */
+.yatzy-banner {
+  position: fixed; inset: 0; z-index: 30; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  animation: ybFade 3.2s ease forwards;
+}
+.yatzy-banner .rays {
+  position: absolute; left: 50%; top: 42%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 210, 138, .22) 0 6deg, transparent 6deg 18deg);
+  mask: radial-gradient(circle, #000 0 18%, transparent 46%); -webkit-mask: radial-gradient(circle, #000 0 18%, transparent 46%);
+  animation: ybSpin 3.2s linear forwards;
+}
+.yatzy-banner b { position: relative; display: flex; margin-top: -12vh; }
+.yatzy-banner span {
+  font: 400 clamp(64px, 19vw, 150px)/1 var(--font-title); color: #ffd28a;
+  text-shadow: 0 4px 0 #8a4b1c, 0 10px 30px rgba(0, 0, 0, .6), 0 0 40px rgba(255, 190, 90, .7);
+  animation: ybLetter .7s cubic-bezier(.3, 1.8, .5, 1) calc(var(--k) * 70ms) backwards;
+  display: inline-block;
+}
+.yatzy-banner small { position: relative; font: 700 18px var(--font-ui); color: #fff1c9; letter-spacing: .08em; text-shadow: 0 2px 8px rgba(0, 0, 0, .7); animation: ybLetter .5s .5s backwards; }
+@keyframes ybLetter { from { transform: translateY(60px) scale(.2) rotate(-20deg); opacity: 0; } }
+@keyframes ybSpin { from { transform: rotate(0) scale(.6); } to { transform: rotate(60deg) scale(1.1); } }
+@keyframes ybFade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+body.yatzy-flash::after { content: ""; position: fixed; inset: 0; z-index: 29; pointer-events: none; background: radial-gradient(circle at 50% 40%, rgba(255, 230, 170, .55), transparent 60%); animation: ybFlash .9s ease-out forwards; }
+@keyframes ybFlash { from { opacity: 1; } to { opacity: 0; } }
+.die.party { animation: dieParty 1.1s cubic-bezier(.3, .6, .4, 1) var(--d, 0ms) 2 backwards; }
+@keyframes dieParty { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-34px) scale(1.12); } 60% { transform: translateY(0) scale(.95, 1.05); } 75% { transform: translateY(-8px); } }
+
+/* Zero: timbro e casella che trema */
+.zero-stamp {
+  position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; pointer-events: none;
+  font: 900 54px/1 var(--font-title); font-style: normal; color: #ff5a4a;
+  text-shadow: 0 0 0 3px #3c1619; -webkit-text-stroke: 2px rgba(60, 10, 12, .8);
+  animation: stamp 2.4s cubic-bezier(.3, 1.6, .5, 1) forwards;
+}
+@keyframes stamp { 0% { transform: scale(3) rotate(-30deg); opacity: 0; } 14% { transform: scale(.9) rotate(-12deg); opacity: 1; } 22% { transform: scale(1) rotate(-12deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1) rotate(-12deg); } }
+.tile.shamed { animation: shamed .5s ease 2; }
+@keyframes shamed { 25% { transform: translateX(-4px) rotate(-2deg); } 75% { transform: translateX(4px) rotate(2deg); } }
+body.shake-sm .game-grid { animation: shakeSm .35s ease; }
+@keyframes shakeSm { 25% { transform: translate(3px, 1px); } 50% { transform: translate(-3px, -1px); } 75% { transform: translate(2px, 0); } }
+@media (prefers-reduced-motion: reduce) { .yatzy-banner, .zero-stamp, .die.party, .tile.shamed { animation: none; } }

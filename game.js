@@ -338,6 +338,11 @@ const Sound = {
     this.tone(330, t, 0.25, 'sine', 0.12);
     this.tone(247, t + 0.12, 0.35, 'sine', 0.12);
   },
+  trombone() {                                    // wa-wa-wa-waaa
+    const ctx = this.ensure(); if (!ctx) return;
+    const t = ctx.currentTime;
+    [392, 370, 349, 330].forEach((f, k) => this.tone(f, t + k * 0.28, k === 3 ? 0.8 : 0.26, 'sawtooth', 0.06));
+  },
   gulp(n = 1) {
     const ctx = this.ensure(); if (!ctx) return;
     const t = ctx.currentTime;
@@ -559,6 +564,18 @@ const SARDO = {
     'Su mundu girat… o est sa mesa?|Il mondo gira… o è il tavolo?',
   ],
   cinq: ['A chent\'annos!|Cent\'anni!'],
+  stupore: [
+    'Comente cazzu est possìbile???|Come c… è possibile???',
+    'Sa bagassa tua! Ite culu!|Accidenti a te! Che fortuna!',
+    'Ma ite ses, unu bruxu?!|Ma cosa sei, uno stregone?!',
+    'Custos dados sunt truccados, lu giuro!|Questi dadi sono truccati, lo giuro!',
+    'Deus meu! Custa la depo contare in su tzilleri!|Dio mio! Questa la devo raccontare al bar!',
+  ],
+  zeru: [
+    'Zeru! Mancu sa pecora mea faghet gai!|Zero! Nemmeno la mia pecora fa così!',
+    'Ahi ahi ahi, ses prus imbriagu de mie!|Ahi ahi, sei più ubriaco di me!',
+    'Bae a pascere sas crabas, bae!|Vai a pascolare le capre, vai!',
+  ],
   gloat: [
     'Su becciu at galu sas dentes!|Il vecchio ha ancora i denti!',
     'Imparadu as? Como torra a cumintzare.|Hai imparato? Ora ricomincia.',
@@ -629,6 +646,15 @@ function tantrum() {
     setTimeout(() => sp.remove(), 2600);
   }, hasClip ? 2300 : 600);
   return true;
+}
+
+// Ogni tanto, senza motivo, Tziu perde la pazienza (più raro delle altre scenette)
+let tantrumsThisGame = 0;
+function maybeTantrum() {
+  if (!G || G.over || reducedMotion || !$('#cameo').hidden) return;
+  const owed = tantrumsThisGame === 0 && G.round >= 5 + (G.rounds > 13 ? 2 : 0);   // almeno una volta a partita
+  if (!owed && (Math.random() > 0.07 || Date.now() - lastTantrum < 120000)) return;
+  setTimeout(() => { if ($('#cameo').hidden && tantrum()) { tantrumsThisGame++; mood('sad', 3000); } }, 1400);
 }
 
 let pokes = [];
@@ -724,6 +750,7 @@ const ROLL_WORDS = ['nessun lancio', 'un lancio', 'due lanci', 'tre lanci', 'qua
 
 // setup: { mode: 'cpu'|'duo'|'solo'|'adv', level, name1, name2, stage, charm }
 function newGame(setup) {
+  tantrumsThisGame = 0;
   if (setup.mode === 'adv') {
     const st = STAGES[setup.stage];
     setup = { ...setup, rainbow: st.rules === 'rainbow', battle: st.rules === 'battle', drink: st.rules === 'drink' };
@@ -911,9 +938,63 @@ async function doRoll(preset) {
   if (!curP().cpu) tutEvent('roll');
 }
 
+// Yatzy: festa grande, poi arriva Tziu Gonario a bocca aperta
+function yatzyParty() {
+  const p = curP();
+  Sound.fanfare(); haptic([40, 60, 40, 60, 80, 60, 120]);
+  if (reducedMotion) { say(line('cinq')); return; }
+  const b = document.createElement('div');
+  b.className = 'yatzy-banner';
+  b.innerHTML = `<i class="rays"></i><b>${'YATZY!'.split('').map((ch, k) => `<span style="--k:${k}">${ch}</span>`).join('')}</b><small>${p.name}</small>`;
+  document.body.appendChild(b);
+  setTimeout(() => b.remove(), 3200);
+  document.querySelectorAll('#tray .die').forEach((el, i) => {
+    el.style.setProperty('--d', `${i * 90}ms`);
+    el.classList.remove('party'); void el.offsetWidth; el.classList.add('party');
+    setTimeout(() => el.classList.remove('party'), 2200);
+  });
+  document.body.classList.add('yatzy-flash');
+  setTimeout(() => document.body.classList.remove('yatzy-flash'), 900);
+  FX.confetti();
+  const gold = ['#ffd28a', '#f0a640', '#fff1c9', '#ffb347', '#ffffff'];
+  for (let k = 0; k < 9; k++) setTimeout(() => {
+    FX.burst(innerWidth * (0.12 + 0.76 * Math.random()), innerHeight * (0.12 + 0.35 * Math.random()), 60, { speed: 9, up: 2, colors: gold });
+    Sound.tone && Sound.ensure() && Sound.tone(600 + Math.random() * 700, Sound.ctx.currentTime, 0.12, 'triangle', 0.05);
+  }, 300 + k * 260);
+  const tziuPlays = p.cpu && p.name === 'Tziu Gonario';
+  const charClip = !tziuPlays && p.charId && clips[`char:${p.charId}`] ? `char:${p.charId}` : null;
+  if (tziuPlays) cameo(pick([...SARDO.cinq, ...SARDO.gloat]), 'wow', true, 'gonario');
+  else {
+    if (charClip) cameo(line('cinq'), 'wow', true, charClip);
+    setTimeout(() => {
+      cameo(pick(SARDO.stupore), 'wow', true, pick(['g-barcolla', 'gonario', 'g-singhiozzo', 'g-barcolla']));
+      mood('wow', 3500);
+    }, charClip ? CLIP_MS + 500 : 1500);
+  }
+  say(line('cinq'));
+  mood('wow', 3000);
+}
+
+// Zero: timbro sulla casella, trombone triste e Tziu che se la ride
+function zeroShame(id) {
+  const t = document.querySelector(`#board .tile[data-id="${id}"]`);
+  if (t && !reducedMotion) {
+    const st = document.createElement('i');
+    st.className = 'zero-stamp'; st.textContent = '0';
+    t.appendChild(st);
+    setTimeout(() => st.remove(), 2400);
+    t.classList.remove('shamed'); void t.offsetWidth; t.classList.add('shamed');
+    const r = t.getBoundingClientRect();
+    FX.burst(r.left + r.width / 2, r.top + r.height / 2, 18, { speed: 3, up: 1, colors: ['#8a7a6a', '#5a4c42', '#b8a898'] });
+  }
+  Sound.trombone ? Sound.trombone() : Sound.zero();
+  document.body.classList.remove('shake-sm'); void document.body.offsetWidth; document.body.classList.add('shake-sm');
+  haptic([80, 40, 80]);
+}
+
 function react() {
   const d = G.dice, c = counts(d), human = isMe(curP());
-  if (isCinq(d)) { mood('wow', 3000); say(line('cinq')); cameo(Math.random() < 0.5 ? SARDO.cinq[0] : line('cinq'), 'wow', true, curP().charId ? `char:${curP().charId}` : null); Sound.fanfare(); FX.confetti(); haptic([40, 60, 40, 60, 80]); }
+  if (isCinq(d)) yatzyParty();
   else if (hasRun(d, 5)) { mood('happy'); say(line('large')); if (human) cameo(line('large'), 'dance'); FX.burstAt($('#tray'), 50); haptic([30, 40, 30]); }
   else if (c.includes(3) && c.includes(2)) { mood('happy'); say(line('full')); FX.burstAt($('#tray'), 35); }
   else if (Math.max(...c) === 4) { if (!(human && G.rollsLeft === 0 && tease('teaseNear', 0.6))) { mood('happy'); say(line('poker')); } }
@@ -1049,10 +1130,12 @@ function commit(id) {
   }
   if (!hadBonus && bonusOf(p) > 0) msg = line('bonus');
   if (sc === 0 && !msg && isMe(p)) {
-    if (OPTS.tease && Math.random() < 0.8) {
-      msg = Math.random() < 0.6 ? SARDO.cottu[0] : sline('teaseZero', 'bad', 0.4);
+    zeroShame(id);
+    if (OPTS.tease) {
+      const r = Math.random();
+      msg = r < 0.5 ? SARDO.cottu[0] : r < 0.8 ? pick(SARDO.zeru) : sline('teaseZero', 'bad', 0.4);
       mood('smirk', 2600);
-      cameo(msg, 'cheer', false, 'g-ride');                 // Tziu Gonario se la ride
+      cameo(msg, 'cheer', true, pick(['g-ride', 'g-ride', 'g-pecora', 'g-singhiozzo']));   // Tziu Gonario se la ride
     } else { msg = line('zero'); mood('sad'); }
   }
   else if (!msg && OPTS.tease && isMe(p) && sc > 0 && sc + 15 <= bestAvail && Math.random() < 0.6) {
@@ -1068,6 +1151,7 @@ function commit(id) {
   else if (!isMe(p) && !p.cpu && sc >= 30 && Math.random() < 0.4) cameo(pick(SARDO.vino), 'cheer', false, 'g-vino');
   else if (!msg && p.cpu && p.lines && sc >= 25 && Math.random() < 0.6) { msg = `${p.name}: «${pick(p.lines)}»`; mood('sad'); }
   if (isMe(p) && sc >= 25) cheerChip(G.cur);
+  maybeTantrum();
   if (isMe(p) && !hadBonus && bonusOf(p) > 0) cameo('Bonus! Anche la pecorella è contenta: su pastore bonu non perdet mai una berbeghe.', 'cheer', true, 'g-pecora');
   else if (isMe(p) && sc >= 30) cameo(sline('cheer', 'good', 0.5), sc >= 40 ? 'dance' : 'cheer');
   if (bonusOf(p) > 0 && !hadBonus) mood('happy');
