@@ -567,14 +567,10 @@ const SARDO = {
   stupore: [
     'Comente cazzu est possìbile???|Come c… è possibile???',
     'Sa bagassa tua! Ite culu!|Accidenti a te! Che fortuna!',
-    'Ma ite ses, unu bruxu?!|Ma cosa sei, uno stregone?!',
-    'Custos dados sunt truccados, lu giuro!|Questi dadi sono truccati, lo giuro!',
-    'Deus meu! Custa la depo contare in su tzilleri!|Dio mio! Questa la devo raccontare al bar!',
   ],
   zeru: [
-    'Zeru! Mancu sa pecora mea faghet gai!|Zero! Nemmeno la mia pecora fa così!',
-    'Ahi ahi ahi, ses prus imbriagu de mie!|Ahi ahi, sei più ubriaco di me!',
-    'Bae a pascere sas crabas, bae!|Vai a pascolare le capre, vai!',
+    'Ahi ahi ahi, ses prus cottu de tziu Paskale!|Ahi ahi ahi, sei più ubriaco di zio Pasquale!',
+    'Bae a mùnghere sas crabas, bae!|Vai a mungere le capre, vai!',
   ],
   gloat: [
     'Su becciu at galu sas dentes!|Il vecchio ha ancora i denti!',
